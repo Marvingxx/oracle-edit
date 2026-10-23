@@ -8,9 +8,9 @@
 
 use std::sync::Arc;
 
-use photocraft_color::{PixelFormat, SampleType, read_sample, write_sample};
-use photocraft_geom::{Rect, TILE_SIZE, TileCoord};
-use photocraft_raster::{Surface, Tile};
+use oracle_edit_color::{PixelFormat, SampleType, read_sample, write_sample};
+use oracle_edit_geom::{Rect, TILE_SIZE, TileCoord};
+use oracle_edit_raster::{Surface, Tile};
 
 use crate::photo_util::par_map;
 

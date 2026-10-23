@@ -36,8 +36,11 @@ pub static INTER_REGULAR: LazyLock<Vec<u8>> = LazyLock::new(|| inflate_font(bund
 pub static INTER_MEDIUM: LazyLock<Vec<u8>> = LazyLock::new(|| inflate_font(bundled_font!("Inter-Medium.ttf")));
 pub static INTER_SEMIBOLD: LazyLock<Vec<u8>> = LazyLock::new(|| inflate_font(bundled_font!("Inter-SemiBold.ttf")));
 pub static JETBRAINS_MONO_REGULAR: LazyLock<Vec<u8>> = LazyLock::new(|| inflate_font(bundled_font!("JetBrainsMono-Regular.ttf")));
+/// Lexend, the interface's face when Interface › UI Font is Lexend (variable: one file, every weight).
+/// UI only: it is not one of the Type tool's [`BUNDLED`] fonts.
+pub static LEXEND_VARIABLE: LazyLock<Vec<u8>> = LazyLock::new(|| inflate_font(bundled_font!("Lexend-Variable.ttf")));
 
-/// Fonts shipped with PhotoCraft (OFL; licences in `assets/fonts`).
+/// Fonts shipped with Oracle Edit (OFL; licences in `assets/fonts`).
 pub static BUNDLED: [(&str, &LazyLock<Vec<u8>>); 4] = [
     ("Inter-Regular.ttf", &INTER_REGULAR),
     ("Inter-Medium.ttf", &INTER_MEDIUM),
@@ -470,7 +473,7 @@ impl FontDb {
     /// Select an exact face for shaping. Private aliases are runtime-only: the document keeps
     /// its public family and PostScript name. CSS matching alone cannot distinguish e.g. the
     /// numeric subfamilies of Yoon fonts, all of which declare weight 400 / normal.
-    pub(crate) fn select_named_face(&mut self, style: &mut photocraft_doc::text::CharStyle) {
+    pub(crate) fn select_named_face(&mut self, style: &mut oracle_edit_doc::text::CharStyle) {
         let family = style.font_family.clone();
         let faces = self.faces(&family);
         let index = style.postscript_name.as_ref().and_then(|ps| faces.iter().position(|f| f.postscript_name.as_ref() == Some(ps))).or_else(|| {
@@ -491,7 +494,7 @@ impl FontDb {
             let Some(font) = info.fonts().get(index) else { return };
             let Some(blob) = font.load(Some(&mut self.fcx.source_cache)) else { return };
             let Some(blob) = isolated_face(blob, font.index()) else { return };
-            let alias = format!(".PhotoCraft-face-{}-{index}", info.id().to_u64());
+            let alias = format!(".Oracle Edit-face-{}-{index}", info.id().to_u64());
             self.fcx.collection.register_fonts(blob, Some(FontInfoOverride { family_name: Some(&alias), ..Default::default() }));
             self.face_aliases.insert(key, alias.clone());
             alias
@@ -922,6 +925,7 @@ mod tests {
         for (name, bytes) in super::BUNDLED {
             assert_eq!(bytes.as_slice(), std::fs::read(dir.join(name)).unwrap(), "{name}");
         }
+        assert_eq!(super::LEXEND_VARIABLE.as_slice(), std::fs::read(dir.join("Lexend-Variable.ttf")).unwrap());
     }
 
     /// Corrupt or oversized font data gives no font, not a panic.
@@ -957,7 +961,7 @@ mod tests {
     #[test]
     fn font_files_of_lists_each_font_file_once() {
         use super::{Blob, Collection, CollectionOptions};
-        let dir = std::env::temp_dir().join(format!("photocraft-font-files-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("oracle-edit-font-files-{}", std::process::id()));
         let activated = dir.join("activated");
         std::fs::create_dir_all(&activated).unwrap();
         let (inter, mono) = (dir.join("inter.ttf"), activated.join("mono.ttf"));
@@ -1012,7 +1016,7 @@ mod tests {
     #[test]
     fn missing_font_dirs_are_skipped() {
         let mut files = Vec::new();
-        super::collect_font_files(std::path::Path::new("/nonexistent/photocraft/fonts"), 0, &mut files);
+        super::collect_font_files(std::path::Path::new("/nonexistent/oracle-edit/fonts"), 0, &mut files);
         assert!(files.is_empty());
     }
 }

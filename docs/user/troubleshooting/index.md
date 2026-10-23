@@ -1,11 +1,11 @@
 ---
 title: Troubleshooting
-description: Fixes and workarounds for known PhotoCraft problems.
+description: Fixes and workarounds for known Oracle Edit problems.
 order: 30
 verified: 0.8.2
 ---
 
-- [PhotoCraft does not start](photocraft-does-not-start.md)
-- [The Windows taskbar turns black when PhotoCraft is maximized](taskbar-turns-black.md)
+- [Oracle Edit does not start](oracle-edit-does-not-start.md)
+- [The Windows taskbar turns black when Oracle Edit is maximized](taskbar-turns-black.md)
 - [Text moves when I start editing a PSD text layer](text-moves-when-editing.md)
 - [Get help with a problem](get-help.md)

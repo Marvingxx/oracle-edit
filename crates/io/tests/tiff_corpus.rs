@@ -10,14 +10,14 @@
 //! every block of every corpus file (effects, type, smart objects, adjustments, paths, …) is
 //! converted to little-endian on the way out and back on the way in. Blocks the transcoder
 //! doesn't know are dropped with a warning; the test lists the keys it saw dropped, and fails
-//! if any of them is one `photocraft-io` maps (a loss of fidelity we can fix).
+//! if any of them is one `oracle-edit-io` maps (a loss of fidelity we can fix).
 #![cfg(feature = "corpus")]
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 
-use photocraft_doc::{Document, Layer};
-use photocraft_io::*;
+use oracle_edit_doc::{Document, Layer};
+use oracle_edit_io::*;
 
 fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(rd) = std::fs::read_dir(dir) else { return };
@@ -43,7 +43,7 @@ fn structure(layers: &[Layer], out: &mut Vec<String>, depth: usize) {
             l.mask.is_some(),
             l.effects.items.len()
         ));
-        if let photocraft_doc::LayerContent::Group(g) = &l.content {
+        if let oracle_edit_doc::LayerContent::Group(g) = &l.content {
             structure(&g.children, out, depth + 1);
         }
     }
@@ -80,8 +80,8 @@ fn corpus_round_trips_through_layered_tiff() {
         let doc = imported.document;
         // Only modes a TIFF holds; everything else is saved flat by design. Multichannel documents
         // have no layers at all (their channels are the image): nothing here to test.
-        if !matches!(doc.pixel_format().mode, photocraft_color::ColorMode::Grayscale | photocraft_color::ColorMode::Rgb | photocraft_color::ColorMode::Cmyk)
-            || doc.mode == photocraft_color::ColorMode::Multichannel
+        if !matches!(doc.pixel_format().mode, oracle_edit_color::ColorMode::Grayscale | oracle_edit_color::ColorMode::Rgb | oracle_edit_color::ColorMode::Cmyk)
+            || doc.mode == oracle_edit_color::ColorMode::Multichannel
         {
             continue;
         }
@@ -116,16 +116,16 @@ fn corpus_round_trips_through_layered_tiff() {
                 d.channels.clear();
                 // A flat Duotone is written as its inks rendered in RGB (as for any flat format).
                 if flat
-                    && d.mode == photocraft_color::ColorMode::Duotone
+                    && d.mode == oracle_edit_color::ColorMode::Duotone
                     && let Some(duo) = d.duotone.take()
                 {
-                    d.layers.push(Layer::new("Duotone", photocraft_doc::LayerContent::Adjustment(duo.display_adjustment())));
-                    d.mode = photocraft_color::ColorMode::Rgb;
+                    d.layers.push(Layer::new("Duotone", oracle_edit_doc::LayerContent::Adjustment(duo.display_adjustment())));
+                    d.mode = oracle_edit_color::ColorMode::Rgb;
                 }
                 d
             };
-            let x = photocraft_compose::flatten(&expected).px;
-            let y = photocraft_compose::flatten(&back).px;
+            let x = oracle_edit_compose::flatten(&expected).px;
+            let y = oracle_edit_compose::flatten(&back).px;
             let diff = max_diff(&x, &y);
             if diff > 1.0 / 255.0 + 1e-5 {
                 return Err(format!("render differs by {diff}"));

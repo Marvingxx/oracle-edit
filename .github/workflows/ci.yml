@@ -20,8 +20,8 @@ env:
   RUST_BACKTRACE: 1
   # No test or fuzz run may print a page: the engine refuses to spool, and if something ever
   # bypasses that, lp fails loudly on a printer that does not exist.
-  PHOTOCRAFT_NO_PRINT: "1"
-  LPDEST: photocraft-no-such-printer
+  ORACLE_EDIT_NO_PRINT: "1"
+  LPDEST: oracle-edit-no-such-printer
   # Debug and test builds keep line tables (file:line in panic backtraces) but drop the rest of the
   # debug info: faster codegen and links, and a smaller target dir (the Linux test job ran out of
   # disk with full debug info). The Windows test legs drop debuginfo entirely (see the test job).
@@ -73,7 +73,7 @@ jobs:
           # The browser build (a fat-LTO wasm build) runs only when something it compiles or
           # packages changed: the web app and its packaging, crate sources and manifests (the web
           # build compiles nearly every crate), the workspace manifests and this workflow.
-          if git diff --name-only "$BASE" HEAD | grep -Eq '^(apps/photocraft-web(-boot)?/|packaging/web/|packaging/env\.sh$|crates/[^/]+/(src/|Cargo\.toml$|build\.rs$)|Cargo\.(toml|lock)$|rust-toolchain(\.toml)?$|\.github/workflows/ci\.yml$)'; then
+          if git diff --name-only "$BASE" HEAD | grep -Eq '^(apps/oracle-edit-web(-boot)?/|packaging/web/|packaging/env\.sh$|crates/[^/]+/(src/|Cargo\.toml$|build\.rs$)|Cargo\.(toml|lock)$|rust-toolchain(\.toml)?$|\.github/workflows/ci\.yml$)'; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"
@@ -172,7 +172,7 @@ jobs:
         with:
           tool: cargo-nextest@0.9.146
 
-      # `--features heif`: official builds open HEIC photos via the optional photocraft-heif crate.
+      # `--features heif`: official builds open HEIC photos via the optional oracle-edit-heif crate.
       # `--lib --bins --tests` leaves out the examples, which cargo test would build and link but
       # never run (Clippy's `--all-targets` still checks they compile). nextest skips doctests, so
       # they get their own step.
@@ -201,7 +201,7 @@ jobs:
         if: runner.os == 'Linux'
         run: >-
           cargo nextest run --profile ci --workspace --locked --features heif --lib --bins --tests
-          --run-ignored only -E 'binary_id(photocraft-engine::panic_hunt)'
+          --run-ignored only -E 'binary_id(oracle-edit-engine::panic_hunt)'
 
       - name: Doctests
         if: matrix.part == 'all' || matrix.part == 'unit'
@@ -266,7 +266,7 @@ jobs:
       # error for distributors who leave it out.
       - name: Test without heif
         if: matrix.variant == 'without heif'
-        run: cargo nextest run -p photocraft-heif -p photocraft-codecs -p photocraft-io --locked --profile ci
+        run: cargo nextest run -p oracle-edit-heif -p oracle-edit-codecs -p oracle-edit-io --locked --profile ci
 
       # The tests built with the optional craft-fonts input (crates/text/build.rs), so the Japanese
       # font tests that skip without it run. Keep the test job's exact `--workspace --features heif
@@ -287,7 +287,7 @@ jobs:
           CRAFT_FONTS_REQUIRED: "1"
         run: >-
           cargo nextest run --profile ci --workspace --locked --features heif --lib --bins --tests
-          -E 'package(photocraft-text) | package(photocraft-io) | package(photocraft-ui-egui)'
+          -E 'package(oracle-edit-text) | package(oracle-edit-io) | package(oracle-edit-ui-egui)'
 
   corpus:
     timeout-minutes: 30

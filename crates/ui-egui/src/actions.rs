@@ -8,13 +8,13 @@ use egui::{Align2, Color32, Rect, Sense, Stroke, pos2, vec2};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use photocraft_engine::actions_cmds::{self, Action};
+use oracle_edit_engine::actions_cmds::{self, Action};
 
-use crate::PhotocraftApp;
+use crate::OracleEditApp;
 use crate::theme::Tokens;
 
 /// Which row is selected and which rows are expanded. The action list itself is
-/// [`photocraft_engine::Session::actions`].
+/// [`oracle_edit_engine::Session::actions`].
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ActionsUi {
@@ -41,7 +41,7 @@ struct RenameAction {
 }
 
 pub(crate) fn label_of(id: &str) -> String {
-    photocraft_engine::commands::find(id)
+    oracle_edit_engine::commands::find(id)
         .map(|c| c.label)
         .or_else(|| crate::menus::UI_COMMANDS.iter().find(|c| c.0 == id).map(|c| c.1))
         // Shell menu items recorded as steps, like Save a Copy (#4373).
@@ -51,7 +51,7 @@ pub(crate) fn label_of(id: &str) -> String {
 }
 
 /// The selected action, or the first one when nothing is selected.
-pub fn selected_action(app: &PhotocraftApp) -> Option<&Action> {
+pub fn selected_action(app: &OracleEditApp) -> Option<&Action> {
     let list = &app.session.actions.list;
     let idx = app.ui.actions.selected.filter(|i| *i < list.len());
     idx.and_then(|i| list.get(i)).or_else(|| list.first())
@@ -59,7 +59,7 @@ pub fn selected_action(app: &PhotocraftApp) -> Option<&Action> {
 
 /// Index of the playback target. Photoshop's Play button uses the first action when
 /// the panel has actions but none of its rows is selected.
-fn playback_selection(app: &PhotocraftApp) -> Option<usize> {
+fn playback_selection(app: &OracleEditApp) -> Option<usize> {
     let n = app.session.actions.list.len();
     if n == 0 { None } else { Some(app.ui.actions.selected.filter(|i| *i < n).unwrap_or(0)) }
 }
@@ -78,7 +78,7 @@ pub(crate) fn shortcut_id(name: &str) -> String {
     format!("{SHORTCUT_PREFIX}{name}")
 }
 
-pub(crate) fn assign_shortcut(app: &mut PhotocraftApp, name: &str, shortcut: &str) -> Result<Value, String> {
+pub(crate) fn assign_shortcut(app: &mut OracleEditApp, name: &str, shortcut: &str) -> Result<Value, String> {
     let id = shortcut_id(name);
     let mut set = serde_json::Map::new();
     // A function key belongs to only one action. Ordinary menu bindings remain
@@ -94,7 +94,7 @@ pub(crate) fn assign_shortcut(app: &mut PhotocraftApp, name: &str, shortcut: &st
 
 /// Replay edits synchronously, with view steps handled by the shell in the same order.
 /// Engine steps keep the headless action semantics (no dialogs or background jobs).
-pub(crate) fn play(app: &mut PhotocraftApp, params: &Value) -> Result<Value, String> {
+pub(crate) fn play(app: &mut OracleEditApp, params: &Value) -> Result<Value, String> {
     let (action, from) = actions_cmds::playback_plan(&app.session, params).map_err(|e| e.to_string())?;
     let recording = actions_cmds::begin_playback(&mut app.session, &action).map_err(|e| e.to_string())?;
     let mut ran = 0u64;
@@ -165,7 +165,7 @@ pub(crate) fn play(app: &mut PhotocraftApp, params: &Value) -> Result<Value, Str
 
 /// Execute the actual menu command, not a synthetic keystroke. Fit is deferred
 /// until canvas layout, so it uses the dimensions after all preceding action steps.
-pub(crate) fn run_view(app: &mut PhotocraftApp, id: &str, params: Value) -> Result<Value, String> {
+pub(crate) fn run_view(app: &mut OracleEditApp, id: &str, params: Value) -> Result<Value, String> {
     app.sync_views();
     let i = app.session.active_index().ok_or("no document")?;
     let v = app.ui.views.get_mut(i).ok_or("no document view")?;
@@ -190,7 +190,7 @@ pub(crate) fn run_view(app: &mut PhotocraftApp, id: &str, params: Value) -> Resu
     Ok(Value::Null)
 }
 
-fn begin_recording(app: &mut PhotocraftApp, append: bool) {
+fn begin_recording(app: &mut OracleEditApp, append: bool) {
     if app.session.actions.recording.is_some() {
         return;
     }
@@ -205,7 +205,7 @@ fn begin_recording(app: &mut PhotocraftApp, append: bool) {
     app.ui.actions.expanded[i] = true;
 }
 
-pub(crate) fn report_play(app: &mut PhotocraftApp, v: &Value) {
+pub(crate) fn report_play(app: &mut OracleEditApp, v: &Value) {
     if let Some(paused) = v.get("paused").filter(|p| p.is_object()) {
         let step = paused.get("step").and_then(Value::as_u64).unwrap_or(0);
         let template = "Step {step} is waiting for its dialog";
@@ -227,7 +227,7 @@ pub(crate) fn report_play(app: &mut PhotocraftApp, v: &Value) {
     app.ui.status_error = true;
 }
 
-fn visible_steps(app: &PhotocraftApp, action: usize) -> Vec<(String, Value)> {
+fn visible_steps(app: &OracleEditApp, action: usize) -> Vec<(String, Value)> {
     app.session.actions.list.get(action).into_iter().flat_map(|a| a.steps.iter()).chain(actions_cmds::pending_steps(&app.session, action)).cloned().collect()
 }
 
@@ -285,10 +285,10 @@ fn step_label(id: &str, params: &Value) -> String {
         let cond = params.get("if").and_then(Value::as_str).unwrap_or("?");
         let branch = |k: &str| params.get(k).and_then(Value::as_str).unwrap_or("–").to_string();
         format!("{}: {cond} → {} / {}", label_of(id), branch("then"), branch("else"))
-    } else if id == photocraft_engine::atn_cmds::STOP_MESSAGE {
+    } else if id == oracle_edit_engine::atn_cmds::STOP_MESSAGE {
         format!("{}: {}", label_of(id), params.get("message").and_then(Value::as_str).unwrap_or_default())
-    } else if id == photocraft_engine::atn_cmds::PHOTOSHOP_STEP {
-        // A step from a .atn file PhotoCraft can't play yet: its Photoshop name, marked.
+    } else if id == oracle_edit_engine::atn_cmds::PHOTOSHOP_STEP {
+        // A step from a .atn file Oracle Edit can't play yet: its Photoshop name, marked.
         let name = params.get("name").and_then(Value::as_str).filter(|n| !n.is_empty()).unwrap_or("?");
         crate::i18n::fmt(tl!("{name} (Photoshop)"), &[("name", name)])
     } else {
@@ -304,11 +304,11 @@ fn source(name: &str, bytes: &[u8]) -> Value {
         return json!({"path": name});
     }
     let _ = name;
-    json!({"data": photocraft_engine::paint::tile::b64_encode(bytes)})
+    json!({"data": oracle_edit_engine::paint::tile::b64_encode(bytes)})
 }
 
 /// Load a `.atn` file's bytes into the Actions panel (the panel menu's Load Actions…).
-pub fn load_bytes(app: &mut PhotocraftApp, name: &str, bytes: &[u8]) -> Result<Value, String> {
+pub fn load_bytes(app: &mut OracleEditApp, name: &str, bytes: &[u8]) -> Result<Value, String> {
     let r = app.run("actions.load", source(name, bytes))?;
     let n = r["actions"].as_array().map_or(0, Vec::len) as u64;
     let unsupported = r["unsupported"].as_array().map_or(0, Vec::len);
@@ -320,8 +320,8 @@ pub fn load_bytes(app: &mut PhotocraftApp, name: &str, bytes: &[u8]) -> Result<V
         let note = crate::i18n::trn(
             crate::i18n::current(),
             unsupported as u64,
-            "{n} step has no PhotoCraft equivalent yet",
-            "{n} steps have no PhotoCraft equivalent yet",
+            "{n} step has no Oracle Edit equivalent yet",
+            "{n} steps have no Oracle Edit equivalent yet",
         );
         let template = "{message} ({note})";
         crate::i18n::fmt(tl!(template), &[("message", &loaded), ("note", &note)])
@@ -344,20 +344,20 @@ pub fn load_bytes(app: &mut PhotocraftApp, name: &str, bytes: &[u8]) -> Result<V
     Ok(r)
 }
 
-fn load_dialog(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn load_dialog(app: &mut OracleEditApp) -> Result<Value, String> {
     app.pick_file_bytes_filtered(&["atn"], |app, name, bytes| load_bytes(app, &name, &bytes))
 }
 
 /// Save Actions…: the selected action's set (every action of it), or every action when none
 /// came from a set, as a `.atn` file Photoshop loads.
-fn save_dialog(app: &mut PhotocraftApp, set: Option<String>) -> Result<Value, String> {
+fn save_dialog(app: &mut OracleEditApp, set: Option<String>) -> Result<Value, String> {
     let set = set.or_else(|| selected_action(app).and_then(|a| a.set.clone()));
     let params = match &set {
         Some(set) => json!({"set": set, "skipUnsupported": true}),
         None => json!({"skipUnsupported": true}),
     };
     let r = app.run("actions.save", params)?;
-    let bytes = r["data"].as_str().and_then(photocraft_engine::paint::tile::b64_decode).ok_or("the export returned no data")?;
+    let bytes = r["data"].as_str().and_then(oracle_edit_engine::paint::tile::b64_decode).ok_or("the export returned no data")?;
     let n = r["actions"].as_array().map_or(0, Vec::len) as u64;
     let skipped = r["skipped"].as_array().map_or(0, Vec::len);
     let file = format!("{}.atn", r["set"].as_str().unwrap_or("Actions"));
@@ -391,7 +391,7 @@ pub fn owns_insert_stop(fields: &serde_json::Map<String, Value>) -> bool {
 }
 
 /// Insert Stop…: a message step after the selected step (or at the end of the selected action).
-fn insert_stop_dialog(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn insert_stop_dialog(app: &mut OracleEditApp) -> Result<Value, String> {
     let action = app.ui.actions.selected.filter(|i| *i < app.session.actions.list.len()).ok_or_else(|| tl!("Select an action first").to_string())?;
     let len = app.session.actions.list[action].steps.len() + actions_cmds::pending_steps(&app.session, action).count();
     let at = app.ui.actions.selected_step.map_or(len, |s| (s + 1).min(len));
@@ -412,12 +412,12 @@ pub fn insert_stop_body(ui: &mut egui::Ui, fields: &mut serde_json::Map<String, 
     fields.insert("allowContinue".into(), json!(allow));
 }
 
-pub fn insert_stop_confirm(app: &mut PhotocraftApp, fields: &serde_json::Map<String, Value>) -> Result<Value, String> {
+pub fn insert_stop_confirm(app: &mut OracleEditApp, fields: &serde_json::Map<String, Value>) -> Result<Value, String> {
     let action = fields.get("action").and_then(Value::as_u64).ok_or("the dialog names no action")?;
     let params = json!({
         "action": action,
         "at": fields.get("at").cloned().unwrap_or(Value::Null),
-        "id": photocraft_engine::atn_cmds::STOP_MESSAGE,
+        "id": oracle_edit_engine::atn_cmds::STOP_MESSAGE,
         "params": {"message": fields.get("message").cloned().unwrap_or(json!("")), "allowContinue": fields.get("allowContinue").cloned().unwrap_or(json!(false))},
     });
     let r = app.run("actions.insert", params)?;
@@ -436,7 +436,7 @@ pub fn insert_stop_confirm(app: &mut PhotocraftApp, fields: &serde_json::Map<Str
 pub const RESUME: &str = "__resumeAction";
 
 /// A step dialog confirmed: continue the action after it (`dialogs::confirm` calls this).
-pub fn resume(app: &mut PhotocraftApp, fields: &serde_json::Map<String, Value>) -> Result<(), String> {
+pub fn resume(app: &mut OracleEditApp, fields: &serde_json::Map<String, Value>) -> Result<(), String> {
     let Some(r) = fields.get(RESUME) else { return Ok(()) };
     // The dialog's command may run as a background job; the next step needs its result.
     if let Some(doc) = app.session.active().map(|d| d.doc.id)
@@ -464,7 +464,7 @@ pub fn resume(app: &mut PhotocraftApp, fields: &serde_json::Map<String, Value>) 
 }
 
 /// A step dialog cancelled: the action stops there, as in Photoshop.
-pub fn stopped(app: &mut PhotocraftApp, fields: &serde_json::Map<String, Value>) {
+pub fn stopped(app: &mut OracleEditApp, fields: &serde_json::Map<String, Value>) {
     if fields.contains_key(RESUME) {
         app.ui.status = tl!("Action playback stopped").to_string();
         app.ui.status_error = false;
@@ -472,7 +472,7 @@ pub fn stopped(app: &mut PhotocraftApp, fields: &serde_json::Map<String, Value>)
 }
 
 /// The Actions entries of the panel group's menu ("…").
-pub fn panel_menu(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn panel_menu(app: &mut OracleEditApp, ui: &mut egui::Ui) {
     let mut act: Option<&str> = None;
     if ui.button(tl!("Load Actions…")).clicked() {
         act = Some("load");
@@ -524,7 +524,7 @@ fn drag_row(ui: &egui::Ui, response: &egui::Response, row: DragRow, t: &Tokens) 
     response.dnd_release_payload::<DragRow>().map(|source| (*source, to))
 }
 
-fn move_row(app: &mut PhotocraftApp, source: DragRow, to: usize) {
+fn move_row(app: &mut OracleEditApp, source: DragRow, to: usize) {
     let mut params = json!({"action": source.action, "to": to});
     if let Some(step) = source.step {
         params["step"] = json!(step);
@@ -552,7 +552,7 @@ fn move_row(app: &mut PhotocraftApp, source: DragRow, to: usize) {
     }
 }
 
-fn delete_selection(app: &mut PhotocraftApp) {
+fn delete_selection(app: &mut OracleEditApp) {
     let Some(action) = app.ui.actions.selected else { return };
     let step = app.ui.actions.selected_step;
     let mut params = json!({"action": action});
@@ -573,7 +573,7 @@ fn delete_selection(app: &mut PhotocraftApp) {
 
 /// The in-place name field of the action being renamed. Enter, Tab or clicking elsewhere
 /// returns the new name to commit; Escape cancels and keeps the old name.
-fn rename_field(app: &mut PhotocraftApp, ui: &mut egui::Ui, index: usize, rect: Rect) -> Option<String> {
+fn rename_field(app: &mut OracleEditApp, ui: &mut egui::Ui, index: usize, rect: Rect) -> Option<String> {
     let mut r = app.ui.actions.renaming.take().filter(|r| r.index == index)?;
     let id = egui::Id::new(("action-rename-field", index));
     let te = ui.put(rect, egui::TextEdit::singleline(&mut r.text).id(id).font(egui::FontId::proportional(12.0)));
@@ -600,7 +600,7 @@ fn rename_field(app: &mut PhotocraftApp, ui: &mut egui::Ui, index: usize, rect: 
     }
 }
 
-fn rename_action(app: &mut PhotocraftApp, index: usize, name: String) {
+fn rename_action(app: &mut OracleEditApp, index: usize, name: String) {
     if let Err(e) = app.run("actions.rename", json!({"action": index, "name": name})) {
         let template = "Could not rename the action: {error}";
         app.ui.status = crate::i18n::fmt(tl!(template), &[("error", &e)]);
@@ -636,7 +636,7 @@ fn display_order(rows: &[Row]) -> Vec<usize> {
     order
 }
 
-pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
+pub fn panel(app: &mut OracleEditApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let recording = app.session.actions.recording;
     let rows: Vec<Row> = app
@@ -831,11 +831,11 @@ pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 ui.label(tl!("Keyboard Shortcuts"));
                 let current = app.session.prefs().shortcuts.get(&shortcut_id(name)).cloned().unwrap_or_default();
                 // Photoshop's Action Options: a function key, with Shift and Command (#7646).
-                let (key, mut shift, mut command) = photocraft_engine::atn_cmds::parse_function_key(&current).unwrap_or((0, false, false));
+                let (key, mut shift, mut command) = oracle_edit_engine::atn_cmds::parse_function_key(&current).unwrap_or((0, false, false));
                 for n in std::iter::once(0).chain(1..=12) {
                     let label = if n == 0 { tl!("None").to_string() } else { format!("F{n}") };
                     if ui.selectable_label(key == n, label).clicked() {
-                        let chosen = if n == 0 { String::new() } else { photocraft_engine::atn_cmds::function_key_name(n, shift, command) };
+                        let chosen = if n == 0 { String::new() } else { oracle_edit_engine::atn_cmds::function_key_name(n, shift, command) };
                         let _ = assign_shortcut(app, name, &chosen);
                         ui.close();
                     }
@@ -844,7 +844,7 @@ pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                     let command_label = if cfg!(target_os = "macos") { tl!("Command") } else { tl!("Ctrl") };
                     let toggled = ui.checkbox(&mut shift, tl!("Shift")).changed() | ui.checkbox(&mut command, command_label).changed();
                     if toggled {
-                        let _ = assign_shortcut(app, name, &photocraft_engine::atn_cmds::function_key_name(key, shift, command));
+                        let _ = assign_shortcut(app, name, &oracle_edit_engine::atn_cmds::function_key_name(key, shift, command));
                     }
                 });
                 ui.separator();
@@ -1012,7 +1012,7 @@ mod tests {
     #[test]
     fn selected_layer_name_is_visible_during_recording_and_after_stop() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width":4,"height":4})).unwrap();
         app.run("layer.setProps", json!({"name":"Background"})).unwrap();
         let layer = app.session.active().unwrap().active_layer.unwrap();
@@ -1033,7 +1033,7 @@ mod tests {
     fn actions_list_grows_with_panel_and_keeps_footer_visible() {
         use egui_kittest::{Harness, kittest::Queryable};
         let bottom = |height: f32| {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
             for i in 0..50 {
                 app.session.actions.list.push(Action { name: format!("Action {i}"), steps: vec![], disabled: Default::default(), ..Default::default() });
             }
@@ -1052,7 +1052,7 @@ mod tests {
     #[test]
     fn a_function_key_with_shift_and_command_plays_its_action() {
         use egui::{Event, Key, Modifiers};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.session.actions.list.push(Action {
             name: "Action 1".into(),
@@ -1060,11 +1060,11 @@ mod tests {
             disabled: Default::default(),
             ..Default::default()
         });
-        let key = photocraft_engine::atn_cmds::function_key_name(2, true, true);
+        let key = oracle_edit_engine::atn_cmds::function_key_name(2, true, true);
         assert_eq!(key, "Cmd+Shift+F2");
         assign_shortcut(&mut app, "Action 1", &key).unwrap();
         let ctx = egui::Context::default();
-        let press = |app: &mut PhotocraftApp, modifiers| {
+        let press = |app: &mut OracleEditApp, modifiers| {
             ctx.begin_pass(egui::RawInput {
                 events: vec![
                     Event::ModifiersChanged(modifiers),
@@ -1076,7 +1076,7 @@ mod tests {
             crate::shortcuts::handle(app, &ctx);
             ctx.end_pass().textures_delta.clear();
         };
-        let layers = |app: &PhotocraftApp| app.session.active().unwrap().doc.layers.len();
+        let layers = |app: &OracleEditApp| app.session.active().unwrap().doc.layers.len();
         let before = layers(&app);
         press(&mut app, Modifiers::NONE);
         press(&mut app, Modifiers::SHIFT);
@@ -1088,7 +1088,7 @@ mod tests {
     #[test]
     fn double_clicking_an_action_name_renames_it_in_place() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.session.actions.list.push(Action {
             name: "Action 1".into(),
@@ -1100,7 +1100,7 @@ mod tests {
         // 60 fps steps, so two clicks a frame apart count as a double-click.
         let mut h = Harness::builder().with_size(vec2(320.0, 260.0)).with_step_dt(1.0 / 60.0).build_ui_state(|ui, app| panel(app, ui), app);
         h.run_steps(3);
-        let rename = |h: &mut Harness<'_, PhotocraftApp>, text: &str| {
+        let rename = |h: &mut Harness<'_, OracleEditApp>, text: &str| {
             let name = h.get_by_label("Action 1").rect().left_center() + vec2(52.0, 0.0);
             h.event(egui::Event::PointerMoved(name));
             // Wait out the double-click window of the previous attempt.
@@ -1126,7 +1126,7 @@ mod tests {
 
     #[test]
     fn play_button_targets_first_action_if_nothing_is_selected() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         assert_eq!(playback_selection(&app), None);
         app.session.actions.list.push(Action {
@@ -1161,7 +1161,7 @@ mod tests {
     #[test]
     fn step_check_box_excludes_the_step_from_playback_and_batch() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         let steps = ["A", "B", "C"].map(|n| ("layer.new.layer".to_string(), json!({"name": n})));
         app.session.actions.list.push(Action::new("Three", steps.to_vec()));
@@ -1185,7 +1185,7 @@ mod tests {
     #[test]
     fn playback_errors_are_visible_in_status_bar() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         app.session.actions.list.push(Action {
             name: "Bad action".into(),
@@ -1204,7 +1204,7 @@ mod tests {
     #[test]
     fn recording_reveals_new_action_and_latest_step_in_a_long_panel() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width":4,"height":4})).unwrap();
         for i in 0..30 {
             app.session.actions.list.push(Action { name: format!("Existing {i}"), steps: vec![], disabled: Default::default(), ..Default::default() });
@@ -1227,7 +1227,7 @@ mod tests {
     #[test]
     fn drag_steps_and_action_headers_reorders_and_keeps_selection() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.session.actions.list.push(Action {
             name: "First".into(),
             steps: vec![("view.zoomOut".into(), json!({})), ("view.fitOnScreen".into(), json!({})), ("view.actualPixels".into(), json!({}))],
@@ -1238,7 +1238,7 @@ mod tests {
         app.ui.actions.expanded = vec![true, false];
         let mut h = Harness::builder().with_size(vec2(320.0, 400.0)).build_ui_state(|ui, app| panel(app, ui), app);
         h.run_steps(4);
-        fn drag(h: &mut Harness<'_, PhotocraftApp>, from: egui::Pos2, to: egui::Pos2) {
+        fn drag(h: &mut Harness<'_, OracleEditApp>, from: egui::Pos2, to: egui::Pos2) {
             h.event(egui::Event::PointerMoved(from));
             h.run_steps(1);
             h.event(egui::Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
@@ -1268,7 +1268,7 @@ mod tests {
 
     #[test]
     fn nested_shell_actions_include_view_steps_and_propagate_failures() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width":40,"height":40})).unwrap();
         app.session.actions.list.push(Action {
             name: "Child".into(),
@@ -1286,7 +1286,7 @@ mod tests {
         assert!(r.get("failed").is_none(), "{r}");
         assert!(app.ui.views[0].fit_pending);
         app.session.authorize =
-            Some(|id, _| if id == "view.fitOnScreen" { Err(photocraft_engine::EngineError::Other("denied nested view".into())) } else { Ok(()) });
+            Some(|id, _| if id == "view.fitOnScreen" { Err(oracle_edit_engine::EngineError::Other("denied nested view".into())) } else { Ok(()) });
         let r = app.run("actions.play", json!({"action":"Parent"})).unwrap();
         assert!(r["failed"]["error"].as_str().unwrap().contains("denied nested view"));
         assert!(app.session.actions.playback_stack.is_empty());
@@ -1296,7 +1296,7 @@ mod tests {
     #[test]
     fn panel_shows_pending_steps_and_trash_deletes_only_the_clicked_step() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 40, "height": 40})).unwrap();
         begin_recording(&mut app, false);
         app.run("view.fitOnScreen", json!({})).unwrap();
@@ -1331,7 +1331,7 @@ mod tests {
 
     #[test]
     fn view_menu_commands_record_append_and_replay_after_resize() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         let ctx = egui::Context::default();
         app.run("file.new", json!({"width": 160, "height": 100})).unwrap();
         begin_recording(&mut app, false);
@@ -1362,7 +1362,7 @@ mod tests {
 
     #[test]
     fn view_action_failure_resume_and_authorization() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.session.actions.list.push(Action {
             name: "Fit".into(),
             steps: vec![("view.fitOnScreen".into(), json!({})), ("view.actualPixels".into(), json!({}))],
@@ -1377,7 +1377,7 @@ mod tests {
         app.session.authorize =
             Some(
                 |id, _| {
-                    if id == "view.fitOnScreen" { Err(photocraft_engine::EngineError::BadParams { cmd: id.into(), msg: "denied view".into() }) } else { Ok(()) }
+                    if id == "view.fitOnScreen" { Err(oracle_edit_engine::EngineError::BadParams { cmd: id.into(), msg: "denied view".into() }) } else { Ok(()) }
                 },
             );
         let result = app.run("actions.play", json!({"action": 0})).unwrap();
@@ -1393,7 +1393,7 @@ mod tests {
 
     #[test]
     fn record_and_replay_on_another_document() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 40, "height": 40})).unwrap();
         app.sync_views();
         app.run("actions.record", json!({})).unwrap();
@@ -1420,7 +1420,7 @@ mod tests {
         let log = written.clone();
         let services = crate::Services {
             export: Some(Box::new(|doc, path, _| {
-                photocraft_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+                oracle_edit_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
             })),
             write: Some(Box::new(move |path, _| {
                 log.borrow_mut().push(path.to_string());
@@ -1428,7 +1428,7 @@ mod tests {
             })),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), services);
         let ctx = egui::Context::default();
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         app.run("actions.record", json!({})).unwrap();
@@ -1447,19 +1447,19 @@ mod tests {
     }
 
     /// An app with the real importer/exporter and writer whose Save dialogs answer `answers`.
-    fn disk_app(answers: Vec<Option<crate::file_dialog::FileDialogAnswer>>) -> PhotocraftApp {
+    fn disk_app(answers: Vec<Option<crate::file_dialog::FileDialogAnswer>>) -> OracleEditApp {
         let services = crate::Services {
             import: Some(Box::new(|name, bytes, depth| {
-                photocraft_io::import_with_svg_group_depth(name, bytes, depth).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
+                oracle_edit_io::import_with_svg_group_depth(name, bytes, depth).map(|r| (r.document, r.warnings)).map_err(|e| e.to_string())
             })),
             export: Some(Box::new(|doc, path, _| {
-                photocraft_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
+                oracle_edit_io::export(doc, path, &Default::default()).map(|r| (r.bytes, r.warnings)).map_err(|e| e.to_string())
             })),
             write: Some(Box::new(|path, bytes| std::fs::write(path, bytes).map_err(|e| e.to_string()))),
             file_dialog: Some(crate::file_dialog::fake(answers).0),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), services);
         app.background_jobs = false;
         app
     }
@@ -1469,7 +1469,7 @@ mod tests {
     /// changed on disk.
     fn record_save_on_a_play_on_b(ext: &str, layered: bool) -> (Value, bool, bool) {
         use crate::file_dialog::FileDialogAnswer::SaveTo;
-        let dir = std::env::temp_dir().join(format!("photocraft-rec-save-{ext}-{layered}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("oracle-edit-rec-save-{ext}-{layered}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = |n: &str| dir.join(format!("{n}.{ext}")).to_string_lossy().into_owned();
         let (a, b) = (path("a"), path("b"));
@@ -1524,7 +1524,7 @@ mod tests {
     #[test]
     fn set_folders_group_actions_and_collapse() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         let mut sharpen = Action::new("Sharpen", vec![("filter.sharpen.sharpen".into(), json!({}))]);
         sharpen.set = Some("Retouch".into());
         let mut soften = Action::new("Soften", vec![("filter.blur.blur".into(), json!({}))]);
@@ -1556,7 +1556,7 @@ mod tests {
 
     #[test]
     fn moving_an_action_next_to_another_set_joins_it() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         let mut a = Action::new("A", vec![]);
         a.set = Some("One".into());
         let mut b = Action::new("B", vec![]);
@@ -1577,7 +1577,7 @@ mod tests {
 
     #[test]
     fn insert_stop_dialog_adds_a_stop_after_the_selected_step() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 8, "height": 8})).unwrap();
         app.session.actions.list.push(Action::new("A", vec![("select.all".into(), json!({})), ("select.inverse".into(), json!({}))]));
         assert!(insert_stop_dialog(&mut app).is_err(), "needs a selected action");
@@ -1591,7 +1591,7 @@ mod tests {
         d.fields.insert("allowContinue".into(), json!(true));
         crate::dialogs::confirm(&mut app, id).unwrap();
         let steps = &app.session.actions.list[0].steps;
-        assert_eq!(steps[1], (photocraft_engine::atn_cmds::STOP_MESSAGE.to_string(), json!({"message": "Check the mask", "allowContinue": true})));
+        assert_eq!(steps[1], (oracle_edit_engine::atn_cmds::STOP_MESSAGE.to_string(), json!({"message": "Check the mask", "allowContinue": true})));
         assert_eq!((app.ui.actions.selected, app.ui.actions.selected_step), (Some(0), Some(1)));
         assert_eq!(step_label(&steps[1].0, &steps[1].1), "Stop: Check the mask");
         // Without a selected step the stop goes last; the panel's menu wiring is exercised by name.
@@ -1605,7 +1605,7 @@ mod tests {
     #[test]
     fn dialog_worker_failure_stops_action_before_following_steps() {
         for (background, locked) in [(true, true), (false, true), (true, false)] {
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+            let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
             app.run("file.new", json!({"width": 8, "height": 6, "background": "#203040"})).unwrap();
             let mut action = Action::new(
                 "Worker Result",
@@ -1641,7 +1641,7 @@ mod tests {
 
     #[test]
     fn a_dialog_toggled_step_pauses_playback_and_resumes_on_ok() {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         let mut a = Action::new(
             "Blur",
@@ -1691,7 +1691,7 @@ mod tests {
     #[test]
     fn button_mode_plays_the_clicked_action_and_hides_its_steps() {
         use egui_kittest::{Harness, kittest::Queryable};
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
         app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
         app.session.actions.list.push(Action::new("Print", vec![("layer.new.layer".into(), json!({}))]));
         app.session.actions.list[0].color = "blue".into();
@@ -1716,12 +1716,12 @@ mod tests {
     /// document (#7367).
     #[test]
     fn save_hook_closing_the_target_stops_an_imported_close_with_save() {
-        use photocraft_psd::atn::{self, AtnEvent, AtnItem};
-        use photocraft_psd::descriptor::{Descriptor, Id, Value as D};
+        use oracle_edit_psd::atn::{self, AtnEvent, AtnItem};
+        use oracle_edit_psd::descriptor::{Descriptor, Id, Value as D};
         use std::{cell::RefCell, rc::Rc};
         // A one-step .atn: Close (`Cls `) with Save: Yes.
         let seed = Action::new("Seed", vec![("layer.new.layer".into(), json!({}))]);
-        let (bytes, _) = photocraft_engine::atn_cmds::export("Set", &[&seed], &[], false).unwrap();
+        let (bytes, _) = oracle_edit_engine::atn_cmds::export("Set", &[&seed], &[], false).unwrap();
         let mut f = atn::parse(&bytes).unwrap();
         f.actions[0].items = vec![AtnItem {
             event: AtnEvent::Code(*b"Cls "),
@@ -1729,7 +1729,7 @@ mod tests {
             descriptor: Some(Descriptor::new("null").with("Svng", D::Enumerated { type_id: Id::new("YsN "), value: Id::new("Ys  ") })),
             ..Default::default()
         }];
-        let imported = photocraft_engine::atn_cmds::import(&atn::write(&f).unwrap()).unwrap();
+        let imported = oracle_edit_engine::atn_cmds::import(&atn::write(&f).unwrap()).unwrap();
         let close_with_save = imported.actions[0].clone();
         assert_eq!(close_with_save.steps, [("file.save".into(), json!({})), ("file.close".into(), json!({}))]);
         for hook in ["none", "activate", "close"] {
@@ -1743,7 +1743,7 @@ mod tests {
                 })),
                 ..Default::default()
             };
-            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+            let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), services);
             // B is dirty with an unsaved KeepB layer; A is active and has its own file.
             for name in ["B", "A"] {
                 app.run("file.new", json!({"name": name, "width": 2, "height": 2})).unwrap();

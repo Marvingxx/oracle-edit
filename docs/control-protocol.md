@@ -11,11 +11,11 @@ See [Shape stroke options](shape-strokes.md) for limits, preview and persistence
 The desktop app listens on `127.0.0.1:<port>` (loopback only). Start it with a token file so the credential is not exposed in the process command line:
 
 ```sh
-photocraft --control 7878 --control-token-file /private/path/photocraft-control.token \
+oracle-edit --control 7878 --control-token-file /private/path/oracle-edit-control.token \
   --automation-read-root /work/project --automation-write-root /work/project
 ```
 
-If the file does not exist, PhotoCraft creates it with a fresh 256-bit token. On Unix the new file is mode `0600`; on Windows, protect it with an appropriate user-only ACL. An existing file is reused. If neither a token nor token file is configured, PhotoCraft generates a token for that launch and writes it to standard error. `PHOTOCRAFT_CONTROL_TOKEN` and `PHOTOCRAFT_CONTROL_TOKEN_FILE` are the environment-variable equivalents.
+If the file does not exist, Oracle Edit creates it with a fresh 256-bit token. On Unix the new file is mode `0600`; on Windows, protect it with an appropriate user-only ACL. An existing file is reused. If neither a token nor token file is configured, Oracle Edit generates a token for that launch and writes it to standard error. `ORACLE_EDIT_CONTROL_TOKEN` and `ORACLE_EDIT_CONTROL_TOKEN_FILE` are the environment-variable equivalents.
 
 The first request on every TCP connection must authenticate. No other method is dispatched before this succeeds:
 
@@ -40,7 +40,7 @@ Each reply is one JSON line with the same `id`:
 
 The desktop server waits up to 60 seconds for a reply. A request still queued at that deadline is rejected before dispatch; a timeout does not cancel work that has already started. The two timeouts read differently, both starting with `timeout`: a request that was never dispatched (still queued at the deadline) says `timeout: not run` and is safe to re-send, while `timeout: no reply in 60s` means the command was dispatched and may still be running and still apply, so check the document before re-sending it. The timeout error names the likely causes: the command may still be running, or the request was queued while the window was not drawing frames — on Wayland the frame update (and with it the control drain) only runs on compositor frame callbacks, so a display that is asleep or a fully occluded window makes every request time out while the app itself is healthy.
 
-The transport is `apps/photocraft/src/control_server.rs`, and the handlers are in `crates/ui-egui/src/control.rs`. The MCP server (`photocraft-cli mcp --bridge 127.0.0.1:<port>`, crate `photocraft-automation`) wraps this same protocol. See [MCP bridge](#mcp-bridge) below.
+The transport is `apps/oracle-edit/src/control_server.rs`, and the handlers are in `crates/ui-egui/src/control.rs`. The MCP server (`oracle-edit-cli mcp --bridge 127.0.0.1:<port>`, crate `oracle-edit-automation`) wraps this same protocol. See [MCP bridge](#mcp-bridge) below.
 
 ## Methods
 
@@ -53,7 +53,7 @@ The transport is `apps/photocraft/src/control_server.rs`, and the handlers are i
 - `ui.set` also accepts `gradientBlendMode` (a layer blend mode name, such as `Difference`) and `gradientClassic` (boolean) for the Gradient tool options bar.
 - `ui.set` also accepts `camTransformOnDrop` (boolean), the Content-Aware Move tool's Transform On Drop checkbox: a drop then puts a scale/rotate box on the patch (`ui.inspect` › `camTransform`: its document/revision, drag `offset` and `frame`), driven with `ui.pointer` (handles as Free Transform's; outside the box rotates), committed with `ui.key Enter` (one `paint.contentAwareMove` with `scaleX`, `scaleY`, `rotate`) or dropped with `Escape`.
 - `ui.set` also accepts `tileGrid` (boolean), a developer overlay of the active layer's storage tiles: the tile grid over the document, every stored tile filled and labelled `tx,ty`, tiles with identical pixels in a shared colour and unique ones in blue. It has no menu item and View › Extras doesn't hide it. `ui.inspect` reports it as `view.tile_grid`.
-- `ui.set` also accepts `strokeTrace` (`true`, `false`, `"stderr"` or `"off"`): turn the stroke latency trace on or off at runtime; each stroke's summary is in `ui.inspect` `perf.strokeTrace`. A CSV file of every frame is set only at launch (`PHOTOCRAFT_STROKE_TRACE=<file.csv>` / `--stroke-trace <file.csv>`): the control channel doesn't write files outside the automation write root
+- `ui.set` also accepts `strokeTrace` (`true`, `false`, `"stderr"` or `"off"`): turn the stroke latency trace on or off at runtime; each stroke's summary is in `ui.inspect` `perf.strokeTrace`. A CSV file of every frame is set only at launch (`ORACLE_EDIT_STROKE_TRACE=<file.csv>` / `--stroke-trace <file.csv>`): the control channel doesn't write files outside the automation write root
 - `ui.set` also accepts `layerFilter` (#5048), the Layers panel filter row: `{by?, kinds?, name?, mode?}`, any subset. `by` is `kind`, `name` or `mode` (the filter-type dropdown); `kinds` lists the Kind toggles that are on (`pixel`, `adjustment`, `type`, `shape`, `smart`); `name` matches part of a layer name, ignoring case; `mode` is a blend mode name (`Multiply`, `Pass Through`). Kind and Name filter only once a kind is on or text is typed; Mode always filters, by Normal at first, as in Photoshop. Fields left out keep their value; a bad one is an error and changes nothing.
 - Each painting tool keeps its own brush, as in Photoshop: `tools.setBrush` and `ui.set {brushSize}` change the active tool's brush, and switching tools swaps in that tool's own (size, hardness, mode, opacity, flow, dynamics, smoothing). A tool used for the first time starts from the brush in hand. The colours, the erase flag and the stroke seed stay shared. So `ui.set {tool: "eraser", brushSize: 12}` sets the Eraser's size, and `ui.set {tool: "brush"}` afterwards brings the Brush's own size back.
 - `ui.set` also accepts the Eyedropper options bar (#1649): `eyedropperSampleSize` (`"point"` or 1, 3, 5, 11, 31, 51, 101: the side of the averaged square, shared by the Eyedropper, a painting tool's Alt-click eyedropper, the Curves/Color Picker eyedroppers and the Info panel), `eyedropperSample` (`current`, `currentAndBelow`, `all`, `allNoAdjustments`, `currentAndBelowNoAdjustments`) and `eyedropperRing` (boolean, Show Sampling Ring). `ui.inspect` reports them under `toolOptions` (`eyedropper_size`, `eyedropper_sample`, `eyedropper_ring`). The engine command `document.sampleColor {x, y, size, sampleLayer}` returns the colour such a sample picks.
@@ -80,7 +80,7 @@ The transport is `apps/photocraft/src/control_server.rs`, and the handlers are i
 - `ui.click {x, y, button?, count?}` / `ui.move {x, y}`: synthetic pointer input in screen points (`button`: `left` (default), `right` (or `secondary`) or `middle`). `count` (default 1, `2` for a double-click) is at most 256; a larger one is an error and queues nothing
 - `ui.key {key, command?, shift?, alt?, ctrl?}` (flags may also be grouped under `modifiers`): press and release a key, e.g. `{"key": "ArrowLeft", "shift": true}`. `{"key": "AltLeft"}` is a tap on Alt, which puts the keyboard on the in-window menu bar (then `ArrowRight`, `ArrowDown`, `Enter`, `Escape` or a menu's letter drive it); `{"key": "F", "alt": true}` opens the menu with that mnemonic (#4988)
 - `ui.pointer`, `ui.click`, `ui.move`, `ui.key` and `ui.screenshot` validate every parameter before acting, as `ui.set` does: an unknown field (top-level, under `modifiers` or in an event), a value of the wrong JSON type (`"x": "abc"`, `"ctrl": "yes"`), a `button`, `kind`, `tool` or `key` outside the accepted set, or a number outside its range (`pressure`, tilt, `rotation`, `count`) is an error naming the parameter, and nothing is queued or applied. A `null` field counts as omitted and takes its default
-- Engine commands (`engine.execute`, `photocraft-cli run`, MCP `command_run`) reject a param key their `params` doc does not name for the commands listed in `STRICT` (`crates/engine/src/param_check.rs`, today `layer.hideLayers` and `layer.showLayers`): `{"ids":[4]}` is the error `unknown parameter \`ids\` (expected: layer)`, and nothing runs. Other commands still ignore unknown keys until their `params` doc is complete and they are added to that list (`coalesce` and `target` are always accepted).
+- Engine commands (`engine.execute`, `oracle-edit-cli run`, MCP `command_run`) reject a param key their `params` doc does not name for the commands listed in `STRICT` (`crates/engine/src/param_check.rs`, today `layer.hideLayers` and `layer.showLayers`): `{"ids":[4]}` is the error `unknown parameter \`ids\` (expected: layer)`, and nothing runs. Other commands still ignore unknown keys until their `params` doc is complete and they are added to that list (`coalesce` and `target` are always accepted).
 - `ui.type {text}`: type text (goes to the focused widget, or to the canvas while the Type tool is editing)
 - `ui.resize {width, height}`: resize the main window
 - `ui.gpu.simulateLoss {error?}`: act as if the wgpu device was lost (or reported an error with `error: true`). The app switches to the CPU image compositor for the rest of the session and shows the same recovery warning as on a real loss. `gpuFallbackNotice` in `ui.inspect` contains the reason while the warning is open. Keep Using CPU saves CPU compatibility for the next launch; Retry GPU saves GPU mode and asks the user to save and restart. The window renderer still requires a working graphics or software adapter. Returns `wasActive` and `gpuInfo`. For testing the fallback. With `destroy: true` it destroys the window's real wgpu device instead, as a driver reset does (see `docs/development.md` › device loss): the app saves every unsaved document for recovery and closes. Returns `destroyed`
@@ -211,7 +211,7 @@ The shape is pinned by a test in `crates/automation/src/rpc.rs` (#3684).
 
 ### Background jobs (#210)
 
-Long commands (every `filter.*`, `edit.contentAwareFill`, `edit.contentAwareScale`, `file.automate.photomerge`, `brush.presets.importAbr`), file opens and interactive saves (File › Save, Save As and the TIFF Options continuation, #2017) run as background jobs in the desktop app: the window keeps drawing, the status bar shows progress with a Cancel button, and jobs that lock the active document show a modal progress dialog (Esc cancels). `engine.execute`, `ui.menu.invoke`, `ui.dialog.confirm` and `app.save` still wait for the result by default; pass `"wait": false` to get `{job, pending: true}` at once, then poll `jobs.list` (`state`: running, done, failed, cancelled; `progress` 0–1; the result or error) and stop it with `jobs.cancel {job}`. A cancelled or failed job leaves the document unchanged. While a job runs, commands that would edit its document fail with "… is still running on this document". `ui.inspect` reports `jobs` (running jobs, opening files, saving files). Set `PHOTOCRAFT_INLINE_JOBS=1` to run everything inline.
+Long commands (every `filter.*`, `edit.contentAwareFill`, `edit.contentAwareScale`, `file.automate.photomerge`, `brush.presets.importAbr`), file opens and interactive saves (File › Save, Save As and the TIFF Options continuation, #2017) run as background jobs in the desktop app: the window keeps drawing, the status bar shows progress with a Cancel button, and jobs that lock the active document show a modal progress dialog (Esc cancels). `engine.execute`, `ui.menu.invoke`, `ui.dialog.confirm` and `app.save` still wait for the result by default; pass `"wait": false` to get `{job, pending: true}` at once, then poll `jobs.list` (`state`: running, done, failed, cancelled; `progress` 0–1; the result or error) and stop it with `jobs.cancel {job}`. A cancelled or failed job leaves the document unchanged. While a job runs, commands that would edit its document fail with "… is still running on this document". `ui.inspect` reports `jobs` (running jobs, opening files, saving files). Set `ORACLE_EDIT_INLINE_JOBS=1` to run everything inline.
 
 ## Preferences
 
@@ -229,7 +229,7 @@ the same commands work in the app, the CLI and headless MCP. Paths are dotted ca
 | `prefs.set` | `{"path":"cursors.painting","value":"precise"}` or `{"values":{"unitsAndRulers.rulers":"cm","guidesGridAndSlices.gridColor":"#ff8800"}}`. Values are validated (choices, ranges, `#rrggbb` colours, shortcut syntax); a batch applies all or nothing. A section path takes an object and merges it key by key |
 | `prefs.reset` | `{"path":"performance"}` (a section or key); no path resets everything. An individual `shortcuts.<id>` or `menus.colors.<id>` reset removes the override and returns `null`, including when it is already absent |
 | `edit.preferences.<section>` | the section's values; in the app (no params) it opens the Preferences dialog on that section |
-| `edit.keyboardShortcuts` | `{"set":{"edit.fill":"Cmd+Shift+F"},"reset":true\|["id",…],"removeConflicts":true,"filter":"blur","list":false,"importKys":"<.kys XML>"}`: returns overrides, matching commands and conflicts. A shortcut moved to another command is removed from its old owner unless `removeConflicts` is false. `""` removes a shortcut, `null` restores the default. The held temporary tools are bindable too: `tools.temporary.hand` (Space; also repositions a selection being drawn), `tools.temporary.zoomIn` (Cmd+Space), `tools.temporary.zoomOut` (Alt+Space; Alt added to a held Zoom In, Cmd+Alt+Space, zooms out too), `tools.temporary.erase` (`` ` ``; with the Brush or Pencil, a stroke started while it is held is in Clear mode, `paint.stroke`/`paint.pencil` `"mode": "clear"`, erasing with that tool's brush); they list with `"hold": true`. ⌘ (Ctrl off the Mac) held alone is the Move tool with the painting, retouching and other non-selection tools, as in Photoshop; it is a modifier, not a binding. `importKys` applies a Photoshop `.kys` set (the file's XML text, at most 4 MiB): rows are matched to commands by our id (`pc-id`, in sets PhotoCraft exported) or else by menu label, a key equal to the default restores it, keys also given in `set` win, and the result gains `import` (`name`, `imported`, `set`, `unknown`, `unreadable`, `alternates`, `toolKeys`, `windows`). A set saved by Photoshop on Windows (no ⌘ or Opt anywhere, Ctrl used) reads Ctrl as the primary modifier, so `Ctrl+L` is the `Cmd+L` default (`windows: true`). Tool keys are matched to tools by `pc-id` or name (a tool's own letter keeps its Shift cycling); `import.tools` lists the keys given. In the app it opens Keyboard Shortcuts and Menus, whose Import Shortcuts… button loads a `.kys` set into the dialog (opening or dropping a `.kys`, or Photoshop's live `Keyboard Shortcuts.psp`, does the same). On a desktop with Photoshop installed, the first launch that has no shortcut overrides yet asks whether to import the newest install's live set (Import / Don't Import; `ui.inspect` shows it as `kysOffer`); the answer is recorded in the preferences as `dialogs.photoshopShortcuts`, so it is asked once. **Sets** (Edit › Keyboard Shortcuts › Set): `useSet` loads a saved set's bindings (`""` or `"PhotoCraft Defaults"`: the defaults) before the call's other changes; then `saveSet` saves the bindings as they end up under a name and uses it, `deleteSet` removes one (the bindings stay), `sets` replaces every saved set (`{"<name>": {"shortcuts": {…}, "alternateShortcuts": {…}}}`, the dialog's OK) and `activeSet` names the set in use without loading it. Names are trimmed, 1–64 characters, at most 64 sets. Every reply has `sets`, `activeSet` (`""` for the defaults), `defaultsName` and `modified` (the bindings differ from the set in use). `exportKys: true` adds `kys`, the bindings of every bindable command and tool as a `.kys` file (Photoshop's macOS key spelling; each row carries our id as `pc-id`, so the file imports back exactly); `summarize: true` (or `{"mac": false}`) adds `html`, Photoshop's Summarize page. A bad parameter anywhere in the call, an export path that can't be written included, changes nothing. **Headless parity:** the shell's commands (View › Zoom In, the panels; `photocraft_engine::shell_commands::SHELL_COMMANDS`) and the tools (`tools.select.<tool>`, listed with `"tool": true`) are bindable, listed, imported, exported and checked for conflicts without the UI; tools may share a key (they cycle with Shift, so a shared letter is no conflict), while a command given a tool's key takes it from the tools. Keys the system takes first (Alt+Tab, Alt+F4, Ctrl+Alt+Delete everywhere but the Mac, plus Ctrl+Esc and Ctrl+Shift+Esc on Windows and Ctrl+Alt+F1–F12 on Linux; ⌘Tab, ⌘`, ⌘⌥Esc on the Mac) are refused, and left out of an imported set (`import.reserved`). Files: `importKys: {"path": …}` reads a `.kys`, `exportKys: {"path": …}` and `summarize: {"path": …}` write the file (the reply has `kysPath` / `htmlPath`); automation (MCP) refuses these paths, as it does `actions.save`'s |
+| `edit.keyboardShortcuts` | `{"set":{"edit.fill":"Cmd+Shift+F"},"reset":true\|["id",…],"removeConflicts":true,"filter":"blur","list":false,"importKys":"<.kys XML>"}`: returns overrides, matching commands and conflicts. A shortcut moved to another command is removed from its old owner unless `removeConflicts` is false. `""` removes a shortcut, `null` restores the default. The held temporary tools are bindable too: `tools.temporary.hand` (Space; also repositions a selection being drawn), `tools.temporary.zoomIn` (Cmd+Space), `tools.temporary.zoomOut` (Alt+Space; Alt added to a held Zoom In, Cmd+Alt+Space, zooms out too), `tools.temporary.erase` (`` ` ``; with the Brush or Pencil, a stroke started while it is held is in Clear mode, `paint.stroke`/`paint.pencil` `"mode": "clear"`, erasing with that tool's brush); they list with `"hold": true`. ⌘ (Ctrl off the Mac) held alone is the Move tool with the painting, retouching and other non-selection tools, as in Photoshop; it is a modifier, not a binding. `importKys` applies a Photoshop `.kys` set (the file's XML text, at most 4 MiB): rows are matched to commands by our id (`pc-id`, in sets Oracle Edit exported) or else by menu label, a key equal to the default restores it, keys also given in `set` win, and the result gains `import` (`name`, `imported`, `set`, `unknown`, `unreadable`, `alternates`, `toolKeys`, `windows`). A set saved by Photoshop on Windows (no ⌘ or Opt anywhere, Ctrl used) reads Ctrl as the primary modifier, so `Ctrl+L` is the `Cmd+L` default (`windows: true`). Tool keys are matched to tools by `pc-id` or name (a tool's own letter keeps its Shift cycling); `import.tools` lists the keys given. In the app it opens Keyboard Shortcuts and Menus, whose Import Shortcuts… button loads a `.kys` set into the dialog (opening or dropping a `.kys`, or Photoshop's live `Keyboard Shortcuts.psp`, does the same). On a desktop with Photoshop installed, the first launch that has no shortcut overrides yet asks whether to import the newest install's live set (Import / Don't Import; `ui.inspect` shows it as `kysOffer`); the answer is recorded in the preferences as `dialogs.photoshopShortcuts`, so it is asked once. **Sets** (Edit › Keyboard Shortcuts › Set): `useSet` loads a saved set's bindings (`""` or `"Oracle Edit Defaults"`: the defaults) before the call's other changes; then `saveSet` saves the bindings as they end up under a name and uses it, `deleteSet` removes one (the bindings stay), `sets` replaces every saved set (`{"<name>": {"shortcuts": {…}, "alternateShortcuts": {…}}}`, the dialog's OK) and `activeSet` names the set in use without loading it. Names are trimmed, 1–64 characters, at most 64 sets. Every reply has `sets`, `activeSet` (`""` for the defaults), `defaultsName` and `modified` (the bindings differ from the set in use). `exportKys: true` adds `kys`, the bindings of every bindable command and tool as a `.kys` file (Photoshop's macOS key spelling; each row carries our id as `pc-id`, so the file imports back exactly); `summarize: true` (or `{"mac": false}`) adds `html`, Photoshop's Summarize page. A bad parameter anywhere in the call, an export path that can't be written included, changes nothing. **Headless parity:** the shell's commands (View › Zoom In, the panels; `oracle_edit_engine::shell_commands::SHELL_COMMANDS`) and the tools (`tools.select.<tool>`, listed with `"tool": true`) are bindable, listed, imported, exported and checked for conflicts without the UI; tools may share a key (they cycle with Shift, so a shared letter is no conflict), while a command given a tool's key takes it from the tools. Keys the system takes first (Alt+Tab, Alt+F4, Ctrl+Alt+Delete everywhere but the Mac, plus Ctrl+Esc and Ctrl+Shift+Esc on Windows and Ctrl+Alt+F1–F12 on Linux; ⌘Tab, ⌘`, ⌘⌥Esc on the Mac) are refused, and left out of an imported set (`import.reserved`). Files: `importKys: {"path": …}` reads a `.kys`, `exportKys: {"path": …}` and `summarize: {"path": …}` write the file (the reply has `kysPath` / `htmlPath`); automation (MCP) refuses these paths, as it does `actions.save`'s |
 | `edit.menus` / `edit.toolbar` | `{"hide":["edit.fade"],"show":[…],"color":{"edit.fill":"red"},"reset":false}` / `{"hidden":["Sponge"],"order":[…]}` |
 | `edit.colorSettings` | `{"workingRgb":"display-p3","workingCmyk":"coated-cmyk","workingGray":"sgray","policyRgb":"preserve\|convert\|off",…,"askOnMismatch":true,"intent":"perceptual","bpc":true}`; honoured when opening files (`file.openAs`, the app's File › Open) and by Image › Mode and "working" profile specs. `color.profileMismatch {"action":"preserve\|convert\|discard\|assignWorking"}` answers the mismatch prompt |
 
@@ -245,15 +245,15 @@ keyboard shortcuts, hidden and coloured menu items, autosave interval and crash 
 log text file. GPU on/off and the GPU tile size apply at the next launch.
 
 The desktop app stores them in `preferences.json` in the platform config directory (macOS
-`~/Library/Application Support/Photocraft`, Windows `%APPDATA%\Photocraft`, Linux
-`$XDG_CONFIG_HOME/photocraft`; override with `PHOTOCRAFT_CONFIG_DIR`); autosaves go to its
-`Recovery` folder (on Windows to `%LOCALAPPDATA%\Photocraft\Recovery`, out of the roaming
-profile, and on Linux to `$XDG_STATE_HOME/photocraft/Recovery`, by default
-`~/.local/state/photocraft/Recovery`, out of the config folder; autosaves left by earlier
+`~/Library/Application Support/OracleEdit`, Windows `%APPDATA%\OracleEdit`, Linux
+`$XDG_CONFIG_HOME/oracle-edit`; override with `ORACLE_EDIT_CONFIG_DIR`); autosaves go to its
+`Recovery` folder (on Windows to `%LOCALAPPDATA%\OracleEdit\Recovery`, out of the roaming
+profile, and on Linux to `$XDG_STATE_HOME/oracle-edit/Recovery`, by default
+`~/.local/state/oracle-edit/Recovery`, out of the config folder; autosaves left by earlier
 versions move there at startup), and the window size and
 position, the dock width and floating-panel geometry
-to `ui.ron` beside it (a file holding values that would crash startup is discarded). In portable mode (a `portable.txt` or `PhotoCraft.portable` file beside the
-executable, as in the Windows portable zip) that directory is `PhotoCraftData` next to the
+to `ui.ron` beside it (a file holding values that would crash startup is discarded). In portable mode (a `portable.txt` or `Oracle Edit.portable` file beside the
+executable, as in the Windows portable zip) that directory is `Oracle EditData` next to the
 executable instead. The web build keeps them in `localStorage`. A save writes only the values
 this instance changed since it last loaded or saved them over what storage holds now, so a second
 browser tab (or app window) never reverts the other's changes; for a value changed in both, the
@@ -263,7 +263,7 @@ persistent one.
 
 User and imported (`.abr`) brush presets live in the config directory's `Presets` folder: one
 `.pcbrushes` JSON file per preset group, content-addressed tip bitmaps under `tips/`, and an
-`index.json` with the group order and deleted built-ins (see `photocraft_engine::preset_store`).
+`index.json` with the group order and deleted built-ins (see `oracle_edit_engine::preset_store`).
 The store loads in the background at launch and syncs after every brush preset change; built-ins
 are never written. The Actions list is `actions.json` in that same folder and survives a restart.
 Headless CLI/MCP sessions and the web build keep brush presets and the action list for the session
@@ -295,16 +295,16 @@ magenta alignment lines. `ui.pointer` drives the same code, so agents get identi
 
 ## MCP bridge
 
-`photocraft-automation` provides an MCP server built on the official Rust SDK (`rmcp`). It runs in one of two modes:
+`oracle-edit-automation` provides an MCP server built on the official Rust SDK (`rmcp`). It runs in one of two modes:
 
-- **Headless** (`photocraft-cli mcp`): an in-process `photocraft_engine::Session`. There is no window.
-- **Bridge** (`photocraft-cli mcp --bridge 127.0.0.1:7878 --control-token-file <path>`): every tool is forwarded to a running `photocraft --control 7878 --control-token-file <path>` over this protocol, so agents see and drive the live app.
+- **Headless** (`oracle-edit-cli mcp`): an in-process `oracle_edit_engine::Session`. There is no window.
+- **Bridge** (`oracle-edit-cli mcp --bridge 127.0.0.1:7878 --control-token-file <path>`): every tool is forwarded to a running `oracle-edit --control 7878 --control-token-file <path>` over this protocol, so agents see and drive the live app.
 
-The bridge keeps one authenticated TCP connection open, and drops and reconnects before a call once the connection has been idle long enough that the app (which closes idle connections after 30s) may have dropped it. A transport failure while sending a request or waiting for its reply, including a reply timeout, drops the connection and reports that the operation may have completed; inspect the document before retrying an edit. Edits are never automatically resent (#1007); a connection that could not be established is reported as "the request was not sent" instead. The MCP server opts its pure-read tools (`ui_inspect`, `doc_inspect`, `command_list`, `jobs_list`, `session_list`, `ui_screenshot`) into one automatic retry on a fresh connection, since a read applies nothing; clients driving `BridgeClient` directly opt in per call with `call_read`. The next separate call reconnects and authenticates, and reply lines whose `id` does not match the request are skipped. The client's call timeout is 55s, strictly below the server's 60s reply deadline, so the bridge's error is the one callers see; commands that can run longer should pass `"wait": false` and poll `jobs.list`. It only accepts loopback addresses, because the app only listens on loopback. Supply its bearer token with `--control-token-file`, `--control-token`, `PHOTOCRAFT_CONTROL_TOKEN_FILE`, or `PHOTOCRAFT_CONTROL_TOKEN`:
+The bridge keeps one authenticated TCP connection open, and drops and reconnects before a call once the connection has been idle long enough that the app (which closes idle connections after 30s) may have dropped it. A transport failure while sending a request or waiting for its reply, including a reply timeout, drops the connection and reports that the operation may have completed; inspect the document before retrying an edit. Edits are never automatically resent (#1007); a connection that could not be established is reported as "the request was not sent" instead. The MCP server opts its pure-read tools (`ui_inspect`, `doc_inspect`, `command_list`, `jobs_list`, `session_list`, `ui_screenshot`) into one automatic retry on a fresh connection, since a read applies nothing; clients driving `BridgeClient` directly opt in per call with `call_read`. The next separate call reconnects and authenticates, and reply lines whose `id` does not match the request are skipped. The client's call timeout is 55s, strictly below the server's 60s reply deadline, so the bridge's error is the one callers see; commands that can run longer should pass `"wait": false` and poll `jobs.list`. It only accepts loopback addresses, because the app only listens on loopback. Supply its bearer token with `--control-token-file`, `--control-token`, `ORACLE_EDIT_CONTROL_TOKEN_FILE`, or `ORACLE_EDIT_CONTROL_TOKEN`:
 
 ```sh
-photocraft-cli mcp --bridge 127.0.0.1:7878 \
-  --control-token-file /private/path/photocraft-control.token
+oracle-edit-cli mcp --bridge 127.0.0.1:7878 \
+  --control-token-file /private/path/oracle-edit-control.token
 ```
 
 How each MCP tool maps onto control methods in bridge mode:
@@ -343,8 +343,8 @@ it to an untrusted host.
 
 Filesystem access fails closed unless launch-time read and/or write roots are granted with
 `--automation-read-root` and `--automation-write-root`. The environment-variable equivalents
-(`PHOTOCRAFT_AUTOMATION_READ_ROOT` / `PHOTOCRAFT_AUTOMATION_WRITE_ROOT`) are supported by
-the desktop `photocraft` process, but not by headless `photocraft-cli mcp` or `serve`;
+(`ORACLE_EDIT_AUTOMATION_READ_ROOT` / `ORACLE_EDIT_AUTOMATION_WRITE_ROOT`) are supported by
+the desktop `oracle-edit` process, but not by headless `oracle-edit-cli mcp` or `serve`;
 for those CLI modes, supply the flags explicitly. In MCP bridge mode, configure roots on the
 desktop process rather than on the bridging CLI. Request paths must be
 non-empty, forward-slash relative paths beneath the applicable root, or absolute paths that lie
@@ -358,7 +358,7 @@ capability interface. Interactive desktop file pickers retain normal user-select
 
 ## Headless server
 
-`photocraft-cli serve` keeps one headless engine session (no window, no GPU) and answers the same
+`oracle-edit-cli serve` keeps one headless engine session (no window, no GPU) and answers the same
 JSON-lines envelope on stdio, or on `127.0.0.1:<port>` with `--port <port>` (loopback only; each
 authenticated connection shares the session). TCP uses the same first-frame `auth` exchange and
 token options as desktop control. Stdio does not require this TCP handshake because access is
@@ -395,7 +395,7 @@ printf '%s\n' \
   '{"id":1,"method":"doc.open","params":{"path":"in.jpg"}}' \
   '{"id":2,"method":"batch","params":{"steps":[{"command":"image.adjustments.invert"},{"command":"filter.blur.gaussianBlur","params":{"radius":3}}]}}' \
   '{"id":3,"method":"doc.save","params":{"path":"out.png"}}' | \
-  photocraft-cli serve --automation-read-root /work/project --automation-write-root /work/project
+  oracle-edit-cli serve --automation-read-root /work/project --automation-write-root /work/project
 ```
 
 The MCP server has the same batching as the `command_batch` tool (`{steps:[{id, params, wait?}], stop_on_error}`),
@@ -414,7 +414,7 @@ The desktop and headless TCP listeners currently enforce:
 
 An oversized line, excess connection, unauthenticated request, or unauthorized filesystem path is
 rejected before command dispatch or file effects. The headless JSON-lines stdio server also
-enforces the request and reply byte ceilings; MCP over stdio (`photocraft-cli mcp`) does not
+enforces the request and reply byte ceilings; MCP over stdio (`oracle-edit-cli mcp`) does not
 cap request bytes, because the MCP SDK reads its own request lines (only MCP tool results are
 checked). A TCP connection is closed after an oversized
 line; on stdio an oversized or non-UTF-8 line gets one error reply (`id: null`), the rest of that
@@ -463,7 +463,7 @@ On the desktop the dialog is a window of its own (title bar, moved and resized l
 immediate viewport, so while Camera Raw has its own window the PNG shows the dimmed main window,
 not the dialog. Read the dialog's state through `ui.inspect` (`cameraRaw`: params, histogram,
 zoom, control rectangles) and drive it with the `ui` params below. To *see* it, render offscreen
-(`cargo run -p photocraft-ui-egui --example snapshot -- --script '[["ui.menu.invoke", {"id": "filter.cameraRaw"}]]'`
+(`cargo run -p oracle-edit-ui-egui --example snapshot -- --script '[["ui.menu.invoke", {"id": "filter.cameraRaw"}]]'`
 or an `egui_kittest` harness): those embed
 viewports, so the dialog is drawn over the main window and appears in the image.
 

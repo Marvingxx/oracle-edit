@@ -1,6 +1,6 @@
 # Summary
 
-[PhotoCraft Documentation](README.md)
+[Oracle Edit Documentation](README.md)
 
 # Getting started
 

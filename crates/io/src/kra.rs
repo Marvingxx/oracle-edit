@@ -20,11 +20,11 @@
 mod tests;
 mod tiles;
 
-use photocraft_color::{BlendMode, PixelFormat};
-use photocraft_doc::{Document, Layer, LayerContent, LayerMask};
-use photocraft_format::zip::ZipReader;
-use photocraft_geom::Size;
-use photocraft_raster::{Interrupt, Surface};
+use oracle_edit_color::{BlendMode, PixelFormat};
+use oracle_edit_doc::{Document, Layer, LayerContent, LayerMask};
+use oracle_edit_format::zip::ZipReader;
+use oracle_edit_geom::Size;
+use oracle_edit_raster::{Interrupt, Surface};
 
 use crate::ora::{MAX_NODES, MAX_PIXEL_BYTES, MAX_SIDE, Warnings, krita_blend};
 use crate::{ImportResult, IoError};
@@ -193,8 +193,8 @@ impl Reader<'_, '_> {
 
     /// The `<layers>` of `node`, bottom-to-top (maindoc.xml lists the topmost first).
     fn layers(&mut self, node: roxmltree::Node<'_, '_>, depth: usize, dx: i32, dy: i32) -> Result<Vec<Layer>> {
-        if depth > photocraft_doc::MAX_GROUP_DEPTH {
-            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", photocraft_doc::MAX_GROUP_DEPTH)));
+        if depth > oracle_edit_doc::MAX_GROUP_DEPTH {
+            return Err(IoError::Unsupported(format!("layer groups nested deeper than {}", oracle_edit_doc::MAX_GROUP_DEPTH)));
         }
         let mut out = Vec::new();
         for child in children(node, "layers", "layer") {

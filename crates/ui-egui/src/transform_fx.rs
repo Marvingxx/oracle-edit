@@ -22,13 +22,13 @@
 use std::sync::{Arc, Mutex, PoisonError};
 
 use egui::{Color32, ColorImage, TextureHandle, TextureId, TextureOptions};
-use photocraft_algo::transform::Homography;
-use photocraft_color::{BlendMode, PixelFormat};
-use photocraft_compose::Buffer;
-use photocraft_compose::effects::{self, TextureCtx};
-use photocraft_doc::{Document, Effect, Layer, LayerContent};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use oracle_edit_algo::transform::Homography;
+use oracle_edit_color::{BlendMode, PixelFormat};
+use oracle_edit_compose::Buffer;
+use oracle_edit_compose::effects::{self, TextureCtx};
+use oracle_edit_doc::{Document, Effect, Layer, LayerContent};
+use oracle_edit_geom::Rect;
+use oracle_edit_raster::Surface;
 
 use crate::transform_tex::PreviewTextures;
 
@@ -106,7 +106,7 @@ pub fn work_layer(layer: &Layer, scale: f64) -> Layer {
     l.vector_mask = None;
     l.fill_cache = None;
     l.blend = BlendMode::Normal;
-    photocraft_engine::image_cmds::scale_effects(&mut l.effects, scale as f32);
+    oracle_edit_engine::image_cmds::scale_effects(&mut l.effects, scale as f32);
     l.effects.reference = l.effects.reference.map(|(x, y)| (x * scale, y * scale));
     l
 }
@@ -418,8 +418,8 @@ impl StyledPreview {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::Color;
-    use photocraft_doc::{Contour, FxCommon, FxPaint, Shadow, StrokeFx, StrokePosition};
+    use oracle_edit_color::Color;
+    use oracle_edit_doc::{Contour, FxCommon, FxPaint, Shadow, StrokeFx, StrokePosition};
 
     const BLUE: Color32 = Color32::from_rgb(0, 0, 255);
 
@@ -457,7 +457,7 @@ mod tests {
     }
 
     fn doc() -> Document {
-        Document::new("t", photocraft_geom::Size::new(200, 200), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8)
+        Document::new("t", oracle_edit_geom::Size::new(200, 200), oracle_edit_color::ColorMode::Rgb, oracle_edit_color::SampleType::U8)
     }
 
     fn rect_quad(r: [f64; 4]) -> [[f64; 2]; 4] {

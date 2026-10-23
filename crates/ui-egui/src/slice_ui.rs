@@ -5,12 +5,12 @@
 //! turns pointer gestures into them.
 
 use egui::{Color32, Rect, Stroke, vec2};
-use photocraft_doc::slices::{self, ResolvedSlice};
-use photocraft_doc::{Document, SliceOrigin};
+use oracle_edit_doc::slices::{self, ResolvedSlice};
+use oracle_edit_doc::{Document, SliceOrigin};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::OracleEditApp;
 use crate::canvas::{ToolEvent, ViewXform};
 use crate::state::{DialogKind, Tool};
 
@@ -37,7 +37,7 @@ pub enum SliceDrag {
         id: u32,
         start: [f64; 2],
         cur: [f64; 2],
-        rect: photocraft_geom::Rect,
+        rect: oracle_edit_geom::Rect,
     },
     /// A handle of the selected slice: `handle` is −1, 0 or 1 per axis (the left, untouched or
     /// right edge; the top, untouched or bottom edge).
@@ -46,7 +46,7 @@ pub enum SliceDrag {
         handle: [i8; 2],
         start: [f64; 2],
         cur: [f64; 2],
-        rect: photocraft_geom::Rect,
+        rect: oracle_edit_geom::Rect,
     },
 }
 
@@ -55,7 +55,7 @@ const HANDLE_REACH: f64 = 5.0;
 
 /// The handle of `r` at document point `p`, within `reach` document pixels: the corners first,
 /// then the edge middles, as the overlay draws them.
-fn handle_at(r: photocraft_geom::Rect, p: [f64; 2], reach: f64) -> Option<[i8; 2]> {
+fn handle_at(r: oracle_edit_geom::Rect, p: [f64; 2], reach: f64) -> Option<[i8; 2]> {
     let (x0, y0, x1, y1) = (f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1));
     let at = |h: [i8; 2]| {
         let x = match h[0] {
@@ -75,7 +75,7 @@ fn handle_at(r: photocraft_geom::Rect, p: [f64; 2], reach: f64) -> Option<[i8; 2
 
 /// `r` with the edges `handle` grabs moved by (`dx`, `dy`), turned the right way round when an
 /// edge is dragged past the opposite one, and at least 1 × 1.
-fn resized(r: photocraft_geom::Rect, handle: [i8; 2], dx: i32, dy: i32) -> photocraft_geom::Rect {
+fn resized(r: oracle_edit_geom::Rect, handle: [i8; 2], dx: i32, dy: i32) -> oracle_edit_geom::Rect {
     let (mut x0, mut y0, mut x1, mut y1) = (r.x0, r.y0, r.x1, r.y1);
     match handle[0] {
         -1 => x0 = x0.saturating_add(dx),
@@ -89,7 +89,7 @@ fn resized(r: photocraft_geom::Rect, handle: [i8; 2], dx: i32, dy: i32) -> photo
     }
     let (x0, x1) = (x0.min(x1), x0.max(x1).max(x0.min(x1).saturating_add(1)));
     let (y0, y1) = (y0.min(y1), y0.max(y1).max(y0.min(y1).saturating_add(1)));
-    photocraft_geom::Rect::new(x0, y0, x1, y1)
+    oracle_edit_geom::Rect::new(x0, y0, x1, y1)
 }
 
 fn is_slice_tool(t: Tool) -> bool {
@@ -104,14 +104,14 @@ pub fn slice_at(doc: &Document, x: f64, y: f64) -> Option<ResolvedSlice> {
     all.iter().filter(|r| r.rect.contains(xi, yi)).max_by_key(|r| order(r).map_or(0, |i| i + 1)).cloned()
 }
 
-fn rect_from(a: [f64; 2], b: [f64; 2]) -> photocraft_geom::Rect {
+fn rect_from(a: [f64; 2], b: [f64; 2]) -> oracle_edit_geom::Rect {
     let (x0, x1) = (a[0].min(b[0]).floor() as i32, a[0].max(b[0]).ceil() as i32);
     let (y0, y1) = (a[1].min(b[1]).floor() as i32, a[1].max(b[1]).ceil() as i32);
-    photocraft_geom::Rect::new(x0, y0, x1, y1)
+    oracle_edit_geom::Rect::new(x0, y0, x1, y1)
 }
 
 /// Pointer input for the two slice tools. Returns true when the event was theirs.
-pub fn pointer(app: &mut PhotocraftApp, ev: ToolEvent, _mods: egui::Modifiers) -> bool {
+pub fn pointer(app: &mut OracleEditApp, ev: ToolEvent, _mods: egui::Modifiers) -> bool {
     let tool = app.ui.tool;
     if !is_slice_tool(tool) {
         return false;
@@ -198,7 +198,7 @@ fn hex(s: &str, fallback: Color32) -> Color32 {
 }
 
 /// Slice outlines and numbered badges (View › Show › Slices; always while a slice tool is on).
-pub fn draw_overlay(app: &PhotocraftApp, painter: &egui::Painter, xf: &ViewXform) {
+pub fn draw_overlay(app: &OracleEditApp, painter: &egui::Painter, xf: &ViewXform) {
     let tool_on = is_slice_tool(app.ui.tool);
     let Some(doc) = app.session.active().map(|d| d.doc.clone()) else { return };
     if !(tool_on || (app.ui.view.shows(app.ui.view.show.slices) && !doc.slices.is_empty())) {
@@ -208,7 +208,7 @@ pub fn draw_overlay(app: &PhotocraftApp, painter: &egui::Painter, xf: &ViewXform
     let color = hex(&prefs.slice_color, Color32::from_rgb(0x38, 0xb5, 0xff));
     let numbers = prefs.show_slice_numbers;
     let selected_color = Color32::from_rgb(0xff, 0xb0, 0x00);
-    let to_screen = |r: photocraft_geom::Rect| Rect::from_two_pos(xf.to_screen(r.x0 as f32, r.y0 as f32), xf.to_screen(r.x1 as f32, r.y1 as f32));
+    let to_screen = |r: oracle_edit_geom::Rect| Rect::from_two_pos(xf.to_screen(r.x0 as f32, r.y0 as f32), xf.to_screen(r.x1 as f32, r.y1 as f32));
     let all = slices::resolve(&doc);
     // Auto slices first (dotted, underneath), then user and layer slices.
     for pass in [true, false] {
@@ -281,7 +281,7 @@ pub fn draw_overlay(app: &PhotocraftApp, painter: &egui::Painter, xf: &ViewXform
 }
 
 /// The selected slice's id, promoting an auto slice first when `promote`.
-fn selected_id(app: &mut PhotocraftApp, promote: bool) -> Option<u32> {
+fn selected_id(app: &mut OracleEditApp, promote: bool) -> Option<u32> {
     let n = app.ui.slices.selected?;
     let doc = app.session.active()?.doc.clone();
     let r = slices::resolve(&doc).into_iter().find(|r| r.number == n)?;
@@ -293,11 +293,11 @@ fn selected_id(app: &mut PhotocraftApp, promote: bool) -> Option<u32> {
 }
 
 /// Slice Options dialog for the selected slice (auto slices are promoted on OK).
-pub fn open_options(app: &mut PhotocraftApp) -> Result<Value, String> {
+pub fn open_options(app: &mut OracleEditApp) -> Result<Value, String> {
     let n = app.ui.slices.selected.ok_or("select a slice with the Slice Select tool")?;
     let st = app.session.active().ok_or("no document")?;
     let r = slices::resolve(&st.doc).into_iter().find(|r| r.number == n).ok_or("no such slice")?;
-    let v = photocraft_engine::slice_cmds::resolved_json(&st.doc, &r);
+    let v = oracle_edit_engine::slice_cmds::resolved_json(&st.doc, &r);
     let mut f = serde_json::Map::new();
     f.insert("__command".into(), json!("slice.set"));
     f.insert("__label".into(), json!("Slice Options"));
@@ -313,7 +313,7 @@ pub fn open_options(app: &mut PhotocraftApp) -> Result<Value, String> {
 }
 
 /// Divide Slice dialog.
-fn open_divide(app: &mut PhotocraftApp) -> Result<Value, String> {
+fn open_divide(app: &mut OracleEditApp) -> Result<Value, String> {
     let n = app.ui.slices.selected.ok_or("select a slice first")?;
     let mut f = serde_json::Map::new();
     f.insert("__command".into(), json!("slice.divide"));
@@ -327,7 +327,7 @@ fn open_divide(app: &mut PhotocraftApp) -> Result<Value, String> {
 }
 
 /// Options bars of the Slice and Slice Select tools.
-pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bool {
+pub fn options_bar(app: &mut OracleEditApp, ui: &mut egui::Ui, tool: Tool) -> bool {
     if !is_slice_tool(tool) {
         return false;
     }
@@ -373,8 +373,8 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bo
 mod tests {
     use super::*;
 
-    fn app() -> PhotocraftApp {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn app() -> OracleEditApp {
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), Default::default());
         app.run("file.new", json!({"width": 100, "height": 80})).unwrap();
         app
     }
@@ -389,7 +389,7 @@ mod tests {
         pointer(&mut app, ToolEvent::Up { x: 40.0, y: 30.0 }, m);
         let doc = app.session.active().unwrap().doc.clone();
         assert_eq!(doc.slices.list.len(), 1);
-        assert_eq!(doc.slices.list[0].rect, photocraft_geom::Rect::new(10, 10, 40, 30));
+        assert_eq!(doc.slices.list[0].rect, oracle_edit_geom::Rect::new(10, 10, 40, 30));
         let n = app.ui.slices.selected.unwrap();
         // Slice Select: drag it by (5, 5).
         app.ui.tool = Tool::SliceSelect;
@@ -397,7 +397,7 @@ mod tests {
         assert_eq!(app.ui.slices.selected, Some(n));
         pointer(&mut app, ToolEvent::Up { x: 25.0, y: 25.0 }, m);
         let doc = app.session.active().unwrap().doc.clone();
-        assert_eq!(doc.slices.list[0].rect, photocraft_geom::Rect::new(15, 15, 45, 35));
+        assert_eq!(doc.slices.list[0].rect, oracle_edit_geom::Rect::new(15, 15, 45, 35));
         // Clicking an auto slice selects it; Slice Options promotes it.
         pointer(&mut app, ToolEvent::Down { x: 90.0, y: 75.0, pressure: 1.0 }, m);
         pointer(&mut app, ToolEvent::Up { x: 90.0, y: 75.0 }, m);
@@ -454,20 +454,20 @@ mod tests {
         pointer(&mut app, ToolEvent::Down { x: 10.0, y: 50.0, pressure: 1.0 }, m);
         pointer(&mut app, ToolEvent::Up { x: 15.0, y: 50.0 }, m);
         let doc = app.session.active().unwrap().doc.clone();
-        assert_eq!(doc.slices.list[0].rect, photocraft_geom::Rect::new(5, 0, 65, 60));
+        assert_eq!(doc.slices.list[0].rect, oracle_edit_geom::Rect::new(5, 0, 65, 60));
     }
 
     #[test]
     fn handles_resize_the_edges_they_hang_off() {
-        let r = photocraft_geom::Rect::new(10, 10, 40, 30);
+        let r = oracle_edit_geom::Rect::new(10, 10, 40, 30);
         assert_eq!(handle_at(r, [10.5, 9.0], 2.0), Some([-1, -1]));
         assert_eq!(handle_at(r, [25.0, 30.0], 2.0), Some([0, 1]));
         assert_eq!(handle_at(r, [40.0, 20.0], 2.0), Some([1, 0]));
         assert_eq!(handle_at(r, [25.0, 20.0], 2.0), None, "the middle is no handle");
-        assert_eq!(resized(r, [1, 0], 5, 9), photocraft_geom::Rect::new(10, 10, 45, 30), "the right edge only");
-        assert_eq!(resized(r, [-1, 1], -4, 6), photocraft_geom::Rect::new(6, 10, 40, 36));
-        assert_eq!(resized(r, [-1, 0], 50, 0), photocraft_geom::Rect::new(40, 10, 60, 30), "dragged past the other edge");
-        assert_eq!(resized(r, [1, 0], -30, 0), photocraft_geom::Rect::new(10, 10, 11, 30), "never empty");
+        assert_eq!(resized(r, [1, 0], 5, 9), oracle_edit_geom::Rect::new(10, 10, 45, 30), "the right edge only");
+        assert_eq!(resized(r, [-1, 1], -4, 6), oracle_edit_geom::Rect::new(6, 10, 40, 36));
+        assert_eq!(resized(r, [-1, 0], 50, 0), oracle_edit_geom::Rect::new(40, 10, 60, 30), "dragged past the other edge");
+        assert_eq!(resized(r, [1, 0], -30, 0), oracle_edit_geom::Rect::new(10, 10, 11, 30), "never empty");
     }
 
     /// #7863: with Slice Select, dragging a handle of the selected slice resizes it; the middle
@@ -480,27 +480,27 @@ mod tests {
         pointer(&mut app, ToolEvent::Down { x: 10.0, y: 10.0, pressure: 1.0 }, m);
         pointer(&mut app, ToolEvent::Up { x: 40.0, y: 30.0 }, m);
         app.ui.tool = Tool::SliceSelect;
-        let rect = |app: &PhotocraftApp| app.session.active().unwrap().doc.slices.list[0].rect;
+        let rect = |app: &OracleEditApp| app.session.active().unwrap().doc.slices.list[0].rect;
         // The bottom-right corner.
         pointer(&mut app, ToolEvent::Down { x: 40.0, y: 30.0, pressure: 1.0 }, m);
         assert!(matches!(app.ui.slices.drag, Some(SliceDrag::Resize { handle: [1, 1], .. })));
         pointer(&mut app, ToolEvent::Move { x: 50.0, y: 45.0, pressure: 1.0 }, m);
         pointer(&mut app, ToolEvent::Up { x: 50.0, y: 45.0 }, m);
-        assert_eq!(rect(&app), photocraft_geom::Rect::new(10, 10, 50, 45));
+        assert_eq!(rect(&app), oracle_edit_geom::Rect::new(10, 10, 50, 45));
         assert!(app.ui.slices.selected.is_some(), "still selected");
         // The left edge's middle.
         pointer(&mut app, ToolEvent::Down { x: 10.0, y: 27.0, pressure: 1.0 }, m);
         pointer(&mut app, ToolEvent::Up { x: 4.0, y: 60.0 }, m);
-        assert_eq!(rect(&app), photocraft_geom::Rect::new(4, 10, 50, 45), "only the left edge moves");
+        assert_eq!(rect(&app), oracle_edit_geom::Rect::new(4, 10, 50, 45), "only the left edge moves");
         // Inside, away from the handles, it still moves.
         pointer(&mut app, ToolEvent::Down { x: 30.0, y: 20.0, pressure: 1.0 }, m);
         pointer(&mut app, ToolEvent::Up { x: 32.0, y: 21.0 }, m);
-        assert_eq!(rect(&app), photocraft_geom::Rect::new(6, 11, 52, 46));
+        assert_eq!(rect(&app), oracle_edit_geom::Rect::new(6, 11, 52, 46));
         // Locked: the handle doesn't resize.
         app.run("view.lockSlices", json!({"on": true})).unwrap();
         pointer(&mut app, ToolEvent::Down { x: 52.0, y: 46.0, pressure: 1.0 }, m);
         pointer(&mut app, ToolEvent::Up { x: 70.0, y: 70.0 }, m);
-        assert_eq!(rect(&app), photocraft_geom::Rect::new(6, 11, 52, 46));
+        assert_eq!(rect(&app), oracle_edit_geom::Rect::new(6, 11, 52, 46));
     }
 
     #[test]

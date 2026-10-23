@@ -1,9 +1,9 @@
 //! Rasterizes a [`TextLayout`] into a document-space [`Surface`] of any pixel format.
 
-use photocraft_color::{Color, PixelFormat, SampleType};
-use photocraft_doc::text::AntiAlias;
-use photocraft_geom::{Affine, Rect};
-use photocraft_raster::Surface;
+use oracle_edit_color::{Color, PixelFormat, SampleType};
+use oracle_edit_doc::text::AntiAlias;
+use oracle_edit_geom::{Affine, Rect};
+use oracle_edit_raster::Surface;
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::DrawSettings;
 use skrifa::{GlyphId, MetadataProvider};
@@ -210,12 +210,12 @@ fn glyph_center(layout: &TextLayout, g: &PlacedGlyph, font: &skrifa::FontRef, si
 
 /// The deformation of a type layer: the path it runs along, or its Warp Text settings (None
 /// when neither applies).
-pub fn layout_deform(layout: &TextLayout, layer: &photocraft_doc::TextLayer) -> Option<Warp> {
+pub fn layout_deform(layout: &TextLayout, layer: &oracle_edit_doc::TextLayer) -> Option<Warp> {
     Warp::on_path(&layer.shape).or_else(|| layout_warp(layout, layer.warp.as_ref()))
 }
 
 /// The warp to apply to `layout` (None when `warp` is absent, `warpNone` or flat).
-pub fn layout_warp(layout: &TextLayout, warp: Option<&photocraft_doc::text::TextWarp>) -> Option<Warp> {
+pub fn layout_warp(layout: &TextLayout, warp: Option<&oracle_edit_doc::text::TextWarp>) -> Option<Warp> {
     Warp::new(warp?, layout.bounds()?)
 }
 
@@ -226,7 +226,7 @@ fn color_in(format: &PixelFormat, c: &Color) -> Vec<f32> {
         c.c[..n].to_vec()
     } else {
         let [r, g, b] = c.to_rgb();
-        let mut v = photocraft_raster::from_rgba(&PixelFormat { alpha: false, ..*format }, [r, g, b, 1.0]);
+        let mut v = oracle_edit_raster::from_rgba(&PixelFormat { alpha: false, ..*format }, [r, g, b, 1.0]);
         v.truncate(n);
         v
     }
@@ -446,7 +446,7 @@ pub fn outlines(layout: &TextLayout, transform: &Affine, warp: Option<&Warp>) ->
 #[cfg(test)]
 mod tests {
     use super::{MAX_PIXELS, rect_from_bounds};
-    use photocraft_geom::Rect;
+    use oracle_edit_geom::Rect;
 
     #[test]
     fn bounds_are_clipped_without_overflow_and_oversized_rectangles_rejected() {

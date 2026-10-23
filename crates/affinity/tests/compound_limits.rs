@@ -2,9 +2,9 @@
 #![cfg(feature = "synth")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use photocraft_affinity::model::{Document, Kind};
-use photocraft_affinity::synth::{self, F, Method, tag};
-use photocraft_affinity::{Limits, read};
+use oracle_edit_affinity::model::{Document, Kind};
+use oracle_edit_affinity::synth::{self, F, Method, tag};
+use oracle_edit_affinity::{Limits, read};
 use std::time::{Duration, Instant};
 
 fn compound(id: u32, children: Vec<F>) -> F {
@@ -44,13 +44,13 @@ fn document(definitions: Vec<F>, roots: Vec<F>) -> Document {
 // A stack overflow aborts rather than unwinds. Keep that failure (and an exponential hang)
 // inside a child process, so the regression fails without killing the entire test runner.
 fn isolated(name: &str, check: impl FnOnce()) {
-    if std::env::var("PHOTOCRAFT_COMPOUND_CASE").as_deref() == Ok(name) {
+    if std::env::var("ORACLE_EDIT_COMPOUND_CASE").as_deref() == Ok(name) {
         check();
         return;
     }
     let mut child = std::process::Command::new(std::env::current_exe().unwrap())
         .args(["--exact", name, "--nocapture"])
-        .env("PHOTOCRAFT_COMPOUND_CASE", name)
+        .env("ORACLE_EDIT_COMPOUND_CASE", name)
         .spawn()
         .unwrap();
     let start = Instant::now();

@@ -14,10 +14,10 @@
 
 use std::time::Instant;
 
-use photocraft_color::{BlendMode, Color, ColorMode, SampleType};
-use photocraft_doc::{Document, Layer, Size};
-use photocraft_geom::Rect;
-use photocraft_gpu::{Compositor, DeviceHealth, GpuTiming, timing};
+use oracle_edit_color::{BlendMode, Color, ColorMode, SampleType};
+use oracle_edit_doc::{Document, Layer, Size};
+use oracle_edit_geom::Rect;
+use oracle_edit_gpu::{Compositor, DeviceHealth, GpuTiming, timing};
 
 /// Pixels in `r`, as the compositor counts them.
 fn area(r: Rect) -> u64 {

@@ -3,14 +3,14 @@
 //! - `brush.presets.importAbr` adds the presets of an `.abr` file (v1, v2, v6+) to the brush
 //!   library as one group named after the file, with the file's own folders nested inside it
 //!   as Photoshop does (Brushes panel › Import Brushes…, Preset Manager). Parsing lives in
-//!   `photocraft-psd` (`abr`), the mapping onto [`BrushSettings`] in `photocraft-io` (`abr_map`).
+//!   `oracle-edit-psd` (`abr`), the mapping onto [`BrushSettings`] in `oracle-edit-io` (`abr_map`).
 //! - `brush.presets.importImage` turns an image file (anything File › Open reads: PNG, JPEG,
 //!   TIFF, PSD…) into a sampled-tip brush preset, as Edit › Define Brush Preset does with a
 //!   selection: dark pixels paint, white and transparent ones don't (TOOL-213-12).
 //! - `gradient.presets.importGrd` adds the gradients of a `.grd` file (version 5) to the
 //!   Gradients panel as one group.
 //!
-//! [`BrushSettings`]: photocraft_paint::BrushSettings
+//! [`BrushSettings`]: oracle_edit_paint::BrushSettings
 
 use serde_json::{Value, json};
 
@@ -30,7 +30,7 @@ pub const MAX_FILE_BYTES: u64 = 512 << 20;
 /// Largest accepted `.abr` file: brush libraries of large sampled tips outgrow [`MAX_FILE_BYTES`].
 /// Tied to the decoder's sample budget (1 GiB, 512 MiB on 32-bit targets) so it never refuses
 /// what this accepts.
-pub const MAX_ABR_FILE_BYTES: u64 = photocraft_psd::abr::MAX_TOTAL_BYTES as u64;
+pub const MAX_ABR_FILE_BYTES: u64 = oracle_edit_psd::abr::MAX_TOTAL_BYTES as u64;
 
 /// File bytes from `data` (base64) or `path`, plus a default group name.
 pub(crate) fn file_bytes(p: &Value, cmd: &str, what: &str) -> Result<(Vec<u8>, String)> {
@@ -44,7 +44,7 @@ fn file_bytes_within(p: &Value, cmd: &str, what: &str, max: u64) -> Result<(Vec<
         if s.len() as u64 > max / 3 * 4 + 4 {
             return Err(bad(cmd, "`data` is too large"));
         }
-        let bytes = photocraft_paint::tile::b64_decode(s).ok_or_else(|| bad(cmd, "`data` is not valid base64"))?;
+        let bytes = oracle_edit_paint::tile::b64_decode(s).ok_or_else(|| bad(cmd, "`data` is not valid base64"))?;
         return Ok((bytes, String::new()));
     }
     let path =
@@ -109,7 +109,7 @@ fn import_abr(s: &mut Session, p: &Value) -> Result<Value> {
             };
             ctx.check()?;
             let imp = ctx
-                .stage(0.05, 1.0, "Importing brushes", |ctl| photocraft_io::abr_map::read_abr_with(&bytes, &group, ctl))
+                .stage(0.05, 1.0, "Importing brushes", |ctl| oracle_edit_io::abr_map::read_abr_with(&bytes, &group, ctl))
                 .map_err(|e| if ctx.cancelled() { EngineError::Cancelled } else { bad(cmd, e) })?;
             Ok((group, imp))
         },
@@ -117,7 +117,7 @@ fn import_abr(s: &mut Session, p: &Value) -> Result<Value> {
     )
 }
 
-fn add_abr_presets(s: &mut Session, p: &Value, group: String, imp: photocraft_io::abr_map::AbrImport) -> Result<Value> {
+fn add_abr_presets(s: &mut Session, p: &Value, group: String, imp: oracle_edit_io::abr_map::AbrImport) -> Result<Value> {
     // Re-importing a file replaces its group instead of duplicating it.
     if p.get("replace").and_then(Value::as_bool).unwrap_or(true) {
         s.tools.presets.retain(|x| x.builtin || x.group != group);
@@ -132,7 +132,7 @@ fn add_abr_presets(s: &mut Session, p: &Value, group: String, imp: photocraft_io
     s.brush_presets_changed();
     if p.get("select").and_then(Value::as_bool).unwrap_or(false)
         && let Some(first) = names.first()
-        && let Some(pr) = photocraft_paint::presets::find(&s.tools.presets, first)
+        && let Some(pr) = oracle_edit_paint::presets::find(&s.tools.presets, first)
     {
         let mut b = pr.brush.clone().picked_over(&s.tools.brush);
         s.load_brush_tips(&mut b).map_err(|e| bad("brush.presets.importAbr", e))?;
@@ -150,15 +150,15 @@ fn add_abr_presets(s: &mut Session, p: &Value, group: String, imp: photocraft_io
 /// selection), cropped to the painted extent. The composite is rendered in bands twice: once to
 /// find the painted bounds, then only those, so a large mostly-white image never needs a
 /// full-size buffer.
-fn image_paint(doc: &photocraft_doc::Document, cmd: &str) -> Result<(Vec<f32>, usize, usize)> {
-    let paint = |c: [f32; 4]| ((1.0 - photocraft_color::blend::lum([c[0], c[1], c[2]])) * c[3]).clamp(0.0, 1.0);
-    let mut bounds: Option<photocraft_geom::Rect> = None;
-    let _ = photocraft_compose::render_bands(doc, doc.bounds(), 0, |band| -> std::result::Result<(), ()> {
+fn image_paint(doc: &oracle_edit_doc::Document, cmd: &str) -> Result<(Vec<f32>, usize, usize)> {
+    let paint = |c: [f32; 4]| ((1.0 - oracle_edit_color::blend::lum([c[0], c[1], c[2]])) * c[3]).clamp(0.0, 1.0);
+    let mut bounds: Option<oracle_edit_geom::Rect> = None;
+    let _ = oracle_edit_compose::render_bands(doc, doc.bounds(), 0, |band| -> std::result::Result<(), ()> {
         let w = band.rect.width() as usize;
         for (i, c) in band.px.iter().enumerate() {
             if paint(*c) > 1e-4 {
                 let (x, y) = (band.rect.x0 + (i % w.max(1)) as i32, band.rect.y0 + (i / w.max(1)) as i32);
-                let px = photocraft_geom::Rect::new(x, y, x.saturating_add(1), y.saturating_add(1));
+                let px = oracle_edit_geom::Rect::new(x, y, x.saturating_add(1), y.saturating_add(1));
                 bounds = Some(bounds.map_or(px, |b| b.union(&px)));
             }
         }
@@ -171,7 +171,7 @@ fn image_paint(doc: &photocraft_doc::Document, cmd: &str) -> Result<(Vec<f32>, u
     }
     let (w, h) = (area.width() as usize, area.height() as usize);
     let mut v = vec![0.0f32; w * h];
-    let _ = photocraft_compose::render_bands(doc, area, 0, |band| -> std::result::Result<(), ()> {
+    let _ = oracle_edit_compose::render_bands(doc, area, 0, |band| -> std::result::Result<(), ()> {
         let bw = band.rect.width() as usize;
         for (i, c) in band.px.iter().enumerate() {
             let (x, y) = ((band.rect.x0 - area.x0) as usize + i % bw.max(1), (band.rect.y0 - area.y0) as usize + i / bw.max(1));
@@ -209,7 +209,7 @@ fn import_image(s: &mut Session, p: &Value) -> Result<Value> {
     let (v, w, h) = image_paint(&doc, cmd)?;
     let (brush, tw, th) = crate::brush_cmds::sampled_brush(cmd, &v, w, h)?;
     let name = UniqueNames::new(s.tools.presets.iter().map(|x| x.name.as_str())).unique(&name);
-    s.tools.presets.push(photocraft_paint::BrushPreset {
+    s.tools.presets.push(oracle_edit_paint::BrushPreset {
         name: name.clone(),
         brush: brush.clone(),
         builtin: false,
@@ -297,9 +297,9 @@ fn lab_to_rgb([l, a, b]: [f32; 3]) -> [f32; 3] {
     [gamma(r), gamma(g), gamma(bb)]
 }
 
-fn stop_color(c: photocraft_psd::grd::GrdColor) -> crate::presets::gradients::StopColor {
+fn stop_color(c: oracle_edit_psd::grd::GrdColor) -> crate::presets::gradients::StopColor {
     use crate::presets::gradients::StopColor;
-    use photocraft_psd::grd::GrdColor;
+    use oracle_edit_psd::grd::GrdColor;
     let clamp = |c: [f32; 3]| StopColor::Rgb(c.map(|v| if v.is_finite() { v.clamp(0.0, 1.0) } else { 0.0 }));
     match c {
         GrdColor::Foreground => StopColor::Foreground,
@@ -322,7 +322,7 @@ fn import_grd(s: &mut Session, p: &Value) -> Result<Value> {
         None if !stem.is_empty() => stem,
         None => "Imported Gradients".to_string(),
     };
-    let grads = photocraft_psd::grd::parse(&bytes).map_err(|e| bad(cmd, format!("not a readable gradient file (.grd): {e}")))?;
+    let grads = oracle_edit_psd::grd::parse(&bytes).map_err(|e| bad(cmd, format!("not a readable gradient file (.grd): {e}")))?;
     let mut warnings = Vec::new();
     let mut items = Vec::new();
     let (mut noise, mut midpoints) = (0, false);
@@ -349,7 +349,7 @@ fn import_grd(s: &mut Session, p: &Value) -> Result<Value> {
         warnings.push("colour and opacity midpoints other than 50 % are drawn at 50 %".to_string());
     }
     if items.is_empty() {
-        return Err(bad(cmd, "the file holds no gradients PhotoCraft can use (noise gradients only)"));
+        return Err(bad(cmd, "the file holds no gradients Oracle Edit can use (noise gradients only)"));
     }
     let names: Vec<String> = items.iter().map(|g| g.name.clone()).collect();
     let st = &mut s.presets;
@@ -364,8 +364,8 @@ fn import_grd(s: &mut Session, p: &Value) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_psd::abr::{AbrSample, LegacyBrush, LegacyTip, write_v6, write_v12};
-    use photocraft_psd::descriptor::{Descriptor, UnicodeString, Value as DV};
+    use oracle_edit_psd::abr::{AbrSample, LegacyBrush, LegacyTip, write_v6, write_v12};
+    use oracle_edit_psd::descriptor::{Descriptor, UnicodeString, Value as DV};
 
     fn abr_v2() -> Vec<u8> {
         let tip = AbrSample { id: String::new(), width: 6, height: 4, depth: 8, data: vec![255; 24] };
@@ -389,14 +389,14 @@ mod tests {
     fn import_adds_a_group_and_paints() {
         let mut s = Session::new();
         let before = s.tools.presets.len();
-        let data = photocraft_paint::tile::b64_encode(&abr_v2());
+        let data = oracle_edit_paint::tile::b64_encode(&abr_v2());
         let r = s.execute("brush.presets.importAbr", json!({"data": data, "group": "Legacy", "select": true})).unwrap();
         assert_eq!(r["count"], 2);
         // The name clashing with the built-in Hard Round is made unique.
         assert_eq!(r["imported"], json!(["Hard Round 2", "9 px Round"]));
         assert_eq!(s.tools.presets.len(), before + 2);
         assert!(s.tools.presets.iter().filter(|p| p.group == "Legacy").all(|p| !p.builtin));
-        assert!(matches!(s.tools.brush.tip, photocraft_paint::TipShape::Sampled(_)));
+        assert!(matches!(s.tools.brush.tip, oracle_edit_paint::TipShape::Sampled(_)));
         // Re-import replaces the group.
         s.execute("brush.presets.importAbr", json!({"data": data, "group": "Legacy"})).unwrap();
         assert_eq!(s.tools.presets.len(), before + 2);
@@ -429,10 +429,10 @@ mod tests {
             json!({"data": "%%%not base64"}),
             json!({"data": ""}),
             json!({"data": "AAAA"}),
-            json!({"data": photocraft_paint::tile::b64_encode(b"8BPS\0\x01junk")}),
-            json!({"data": photocraft_paint::tile::b64_encode(&abr_v2()), "group": 5}),
-            json!({"data": photocraft_paint::tile::b64_encode(&abr_v2()), "group": "  "}),
-            json!({"data": photocraft_paint::tile::b64_encode(&abr_v2()[..20])}),
+            json!({"data": oracle_edit_paint::tile::b64_encode(b"8BPS\0\x01junk")}),
+            json!({"data": oracle_edit_paint::tile::b64_encode(&abr_v2()), "group": 5}),
+            json!({"data": oracle_edit_paint::tile::b64_encode(&abr_v2()), "group": "  "}),
+            json!({"data": oracle_edit_paint::tile::b64_encode(&abr_v2()[..20])}),
         ] {
             assert!(s.execute("brush.presets.importAbr", p.clone()).is_err(), "{p}");
         }
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn grd_import_adds_a_gradient_group() {
         use crate::presets::gradients::StopColor;
-        use photocraft_psd::grd::{GrdColor, GrdGradient, GrdStop, write};
+        use oracle_edit_psd::grd::{GrdColor, GrdGradient, GrdStop, write};
         let grads = vec![
             GrdGradient {
                 name: "Ember".into(),
@@ -456,7 +456,7 @@ mod tests {
             GrdGradient { name: "Static".into(), noise: true, ..Default::default() },
         ];
         let mut s = Session::new();
-        let data = photocraft_paint::tile::b64_encode(&write(&grads));
+        let data = oracle_edit_paint::tile::b64_encode(&write(&grads));
         let r = s.execute("gradient.presets.importGrd", json!({"data": data, "group": "Fire"})).unwrap();
         assert_eq!(r["imported"], json!(["Ember"]));
         assert_eq!(r["warnings"].as_array().map(Vec::len), Some(1));
@@ -467,10 +467,10 @@ mod tests {
         let n = s.presets.gradients.len();
         s.execute("gradient.presets.importGrd", json!({"data": data, "group": "Fire"})).unwrap();
         assert_eq!(s.presets.gradients.len(), n);
-        for p in [json!({}), json!({"data": "@@"}), json!({"data": photocraft_paint::tile::b64_encode(b"8BGR\0\x03")}), json!({"path": "/nope.grd"})] {
+        for p in [json!({}), json!({"data": "@@"}), json!({"data": oracle_edit_paint::tile::b64_encode(b"8BGR\0\x03")}), json!({"path": "/nope.grd"})] {
             assert!(s.execute("gradient.presets.importGrd", p.clone()).is_err(), "{p}");
         }
-        let only_noise = photocraft_paint::tile::b64_encode(&write(&grads[1..]));
+        let only_noise = oracle_edit_paint::tile::b64_encode(&write(&grads[1..]));
         assert!(s.execute("gradient.presets.importGrd", json!({"data": only_noise})).is_err());
     }
 
@@ -497,15 +497,15 @@ mod tests {
                 }
             }
         }
-        let img = photocraft_codecs::Image::from_u16(40, 30, photocraft_codecs::ChannelLayout::Rgba, &px).unwrap();
-        photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap()
+        let img = oracle_edit_codecs::Image::from_u16(40, 30, oracle_edit_codecs::ChannelLayout::Rgba, &px).unwrap();
+        oracle_edit_codecs::encode(&img, oracle_edit_codecs::Format::Png, &Default::default()).unwrap()
     }
 
     #[test]
     fn imports_an_image_as_a_brush_tip() {
-        use photocraft_paint::TipShape;
+        use oracle_edit_paint::TipShape;
         let mut s = Session::new();
-        let data = photocraft_paint::tile::b64_encode(&stamp_png16());
+        let data = oracle_edit_paint::tile::b64_encode(&stamp_png16());
         let r = s.execute("brush.presets.importImage", json!({"data": data, "fileName": "Stamp.png"})).unwrap();
         assert_eq!(r, json!({"name": "Stamp", "width": 10, "height": 6}), "cropped to the dark block");
         let pr = s.tools.presets.iter().find(|p| p.name == "Stamp").unwrap();
@@ -521,8 +521,8 @@ mod tests {
 
         // An 8-bit grayscale JPEG from disk: named after the file.
         let px: Vec<u8> = (0..24 * 24).map(|i| if (8..16).contains(&(i % 24)) && (4..20).contains(&(i / 24)) { 0 } else { 255 }).collect();
-        let img = photocraft_codecs::Image::from_u8(24, 24, photocraft_codecs::ChannelLayout::Gray, px).unwrap();
-        let jpeg = photocraft_codecs::encode(&img, photocraft_codecs::Format::Jpeg, &Default::default()).unwrap();
+        let img = oracle_edit_codecs::Image::from_u8(24, 24, oracle_edit_codecs::ChannelLayout::Gray, px).unwrap();
+        let jpeg = oracle_edit_codecs::encode(&img, oracle_edit_codecs::Format::Jpeg, &Default::default()).unwrap();
         let path = std::env::temp_dir().join(format!("pc-brush-tip-{}.jpg", std::process::id()));
         std::fs::write(&path, jpeg).unwrap();
         let r = s.execute("brush.presets.importImage", json!({"path": path.to_string_lossy()}));
@@ -536,14 +536,14 @@ mod tests {
     #[test]
     fn image_brush_import_fails_cleanly() {
         let mut s = Session::new();
-        let white = photocraft_codecs::Image::from_u8(4, 4, photocraft_codecs::ChannelLayout::Gray, vec![255; 16]).unwrap();
-        let white = photocraft_paint::tile::b64_encode(&photocraft_codecs::encode(&white, photocraft_codecs::Format::Png, &Default::default()).unwrap());
+        let white = oracle_edit_codecs::Image::from_u8(4, 4, oracle_edit_codecs::ChannelLayout::Gray, vec![255; 16]).unwrap();
+        let white = oracle_edit_paint::tile::b64_encode(&oracle_edit_codecs::encode(&white, oracle_edit_codecs::Format::Png, &Default::default()).unwrap());
         let n = s.tools.presets.len();
         for p in [
             json!({}),
             json!({"data": white}),
             json!({"data": "@@"}),
-            json!({"data": photocraft_paint::tile::b64_encode(b"not an image")}),
+            json!({"data": oracle_edit_paint::tile::b64_encode(b"not an image")}),
             json!({"data": white, "name": 3}),
             json!({"data": white, "fileName": ""}),
             json!({"path": "/nope/brush.png"}),
@@ -569,7 +569,7 @@ mod tests {
                 anti_alias: true,
                 tip: LegacyTip::Computed { diameter: 9, hardness: 100, angle: 0, roundness: 100 },
             };
-            let data = photocraft_paint::tile::b64_encode(&write_v12(1, &vec![round; 10_000], false).unwrap());
+            let data = oracle_edit_paint::tile::b64_encode(&write_v12(1, &vec![round; 10_000], false).unwrap());
             let r = s.execute("brush.presets.importAbr", json!({"data": data})).unwrap();
             let names: Vec<String> = r["imported"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
             let _ = tx.send(names);
@@ -592,7 +592,7 @@ mod tests {
         let tip = AbrSample { id: String::new(), width: 6, height: 4, depth: 8, data: vec![255; 24] };
         let brush = |name: &str| LegacyBrush { name: name.into(), spacing: 25, anti_alias: true, tip: LegacyTip::Sampled(tip.clone()) };
         let file = write_v12(2, &["Speckle", "SPECKLE", "speckle", "Speckle 2", "Speckle", "hard round"].map(brush), true).unwrap();
-        let r = s.execute("brush.presets.importAbr", json!({"data": photocraft_paint::tile::b64_encode(&file)})).unwrap();
+        let r = s.execute("brush.presets.importAbr", json!({"data": oracle_edit_paint::tile::b64_encode(&file)})).unwrap();
         // Names that differ only in letter case count as the same name. The file's "Speckle 2" comes
         // after "SPECKLE" took that name, and "hard round" clashes with the built-in Hard Round.
         assert_eq!(r["imported"], json!(["Speckle", "SPECKLE 2", "speckle 4", "Speckle 2 2", "Speckle 5", "hard round 2"]));

@@ -136,7 +136,7 @@ pub fn shell_save_command(id: &str) -> bool {
 /// started) is no longer open: a Save Document script event closed it. Playback stops there, so
 /// the next step without a document, such as the Close half of an imported Close with Save: Yes,
 /// doesn't act on whichever document is active now (#7367).
-pub fn save_target_closed(s: &Session, id: &str, target: Option<photocraft_doc::DocId>) -> Option<String> {
+pub fn save_target_closed(s: &Session, id: &str, target: Option<oracle_edit_doc::DocId>) -> Option<String> {
     let target = target.filter(|_| shell_save_command(id))?;
     (!s.documents().iter().any(|d| d.doc.id == target)).then(|| {
         "the document was closed during the save (by a Save Document script event); playback stopped so later steps don't act on another document".into()
@@ -899,7 +899,7 @@ mod tests {
     fn translated_square(s: &mut Session, depth: u32) {
         s.execute("file.new", json!({"width": 20, "height": 8, "depth": depth, "background": "transparent"})).unwrap();
         s.edit("red square", |doc, _| {
-            doc.layers[0].surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(0, 2, 2, 4), &[1.0, 0.0, 0.0, 1.0]);
+            doc.layers[0].surface_mut().unwrap().fill_rect(oracle_edit_geom::Rect::new(0, 2, 2, 4), &[1.0, 0.0, 0.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -962,7 +962,7 @@ mod tests {
             fresh.execute("file.new", json!({"width": 20, "height": 8, "depth": depth, "background": "transparent"})).unwrap();
             fresh
                 .edit("red square", |doc, _| {
-                    doc.layers[0].surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(4, 2, 6, 4), &[1.0, 0.0, 0.0, 1.0]);
+                    doc.layers[0].surface_mut().unwrap().fill_rect(oracle_edit_geom::Rect::new(4, 2, 6, 4), &[1.0, 0.0, 0.0, 1.0]);
                     Ok(())
                 })
                 .unwrap();
@@ -1041,7 +1041,7 @@ mod tests {
     fn ruled_background(s: &mut Session, depth: u32) {
         s.execute("file.new", json!({"width": 80, "height": 60, "depth": depth})).unwrap();
         s.edit("red bar", |doc, _| {
-            doc.layers[0].surface_mut().unwrap().fill_rect(photocraft_geom::Rect::new(10, 20, 60, 8), &[1.0, 0.0, 0.0, 1.0]);
+            doc.layers[0].surface_mut().unwrap().fill_rect(oracle_edit_geom::Rect::new(10, 20, 60, 8), &[1.0, 0.0, 0.0, 1.0]);
             Ok(())
         })
         .unwrap();
@@ -1071,8 +1071,8 @@ mod tests {
             assert_eq!(s.active().unwrap().history.past_len(), before + 1, "depth {depth}: one Straighten step (the ruler is no step)");
             let replayed = s.active().unwrap().doc.clone();
             assert_eq!(replayed.size, direct.size, "depth {depth}: rotated and cropped once");
-            let r = photocraft_geom::Rect::new(0, 0, direct.size.width as i32, direct.size.height as i32);
-            let px = |d: &photocraft_doc::Document| d.layers[0].surface().unwrap().read_region(r);
+            let r = oracle_edit_geom::Rect::new(0, 0, direct.size.width as i32, direct.size.height as i32);
+            let px = |d: &oracle_edit_doc::Document| d.layers[0].surface().unwrap().read_region(r);
             assert_eq!(px(&replayed), px(&direct), "depth {depth}: same pixels as the direct run");
         }
     }
@@ -1151,9 +1151,9 @@ mod tests {
         // A duplicate nested in a group must be found even when that group is collapsed.
         let second = s
             .edit("child", |doc, active| {
-                let child = photocraft_doc::Layer::raster("Photo", doc.pixel_format());
+                let child = oracle_edit_doc::Layer::raster("Photo", doc.pixel_format());
                 let id = child.id;
-                if let photocraft_doc::LayerContent::Group(group) = &mut doc.layer_mut(active.unwrap()).unwrap().content {
+                if let oracle_edit_doc::LayerContent::Group(group) = &mut doc.layer_mut(active.unwrap()).unwrap().content {
                     group.children.push(child);
                     group.expanded = false;
                 }
@@ -1552,7 +1552,7 @@ mod tests {
         assert_eq!(pixel(&s, 0, 2, 2), vec![0.0, 0.0, 0.0, 1.0], "outside the selection stays black");
         let last = d.layers.last().unwrap();
         match &last.content {
-            photocraft_doc::LayerContent::Text(t) => {
+            oracle_edit_doc::LayerContent::Text(t) => {
                 assert_eq!(t.text, "Hi", "the styled text replayed");
                 assert!(t.char_runs().iter().any(|r| r.style.faux_bold), "the bold run replayed");
             }

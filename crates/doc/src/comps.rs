@@ -7,8 +7,8 @@
 //! content bounds (artboards: of the board), so applying a comp moves a layer by the difference
 //! between that and where it is now.
 
-use photocraft_color::{BlendMode, Color};
-use photocraft_geom::Rect;
+use oracle_edit_color::{BlendMode, Color};
+use oracle_edit_geom::Rect;
 use serde::{Deserialize, Serialize};
 
 use crate::{Document, Effects, Layer, LayerContent, LayerId};

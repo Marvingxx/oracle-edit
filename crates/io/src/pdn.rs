@@ -8,10 +8,10 @@ mod tests;
 use std::collections::HashMap;
 use std::io::Read;
 
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent};
-use photocraft_geom::{Rect, Size};
-use photocraft_raster::{Interrupt, Surface};
+use oracle_edit_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use oracle_edit_doc::{Document, Layer, LayerContent};
+use oracle_edit_geom::{Rect, Size};
+use oracle_edit_raster::{Interrupt, Surface};
 
 use crate::{ImportResult, IoError};
 use nrbf::{Graph, Reader, Value};

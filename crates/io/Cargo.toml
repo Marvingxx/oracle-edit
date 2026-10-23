@@ -1,6 +1,6 @@
 [package]
-name = "photocraft-io"
-description = "Import/export between photocraft documents and PSD/PSB and flat raster formats"
+name = "oracle-edit-io"
+description = "Import/export between oracle-edit documents and PSD/PSB and flat raster formats"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,25 +12,25 @@ workspace = true
 [features]
 # Real-file corpus tests (opt-in; `cargo xtask test-corpus`). Fail when the corpus is missing.
 corpus = []
-# HEIC/HEIF decode (forwarded to photocraft-codecs; see its `heif` feature).
-heif = ["photocraft-codecs/heif"]
+# HEIC/HEIF decode (forwarded to oracle-edit-codecs; see its `heif` feature).
+heif = ["oracle-edit-codecs/heif"]
 
 [dependencies]
-photocraft-geom = { workspace = true }
-photocraft-color = { workspace = true }
-photocraft-cms = { workspace = true }
-photocraft-raster = { workspace = true }
-photocraft-doc = { workspace = true }
-photocraft-compose = { workspace = true }
-photocraft-algo = { workspace = true }
-photocraft-psd = { workspace = true }
-photocraft-codecs = { workspace = true }
-photocraft-raw = { workspace = true }
-photocraft-affinity = { workspace = true }
-photocraft-text = { workspace = true }
-photocraft-paint = { workspace = true }
-photocraft-vector = { workspace = true }
-photocraft-format = { path = "../format" }
+oracle-edit-geom = { workspace = true }
+oracle-edit-color = { workspace = true }
+oracle-edit-cms = { workspace = true }
+oracle-edit-raster = { workspace = true }
+oracle-edit-doc = { workspace = true }
+oracle-edit-compose = { workspace = true }
+oracle-edit-algo = { workspace = true }
+oracle-edit-psd = { workspace = true }
+oracle-edit-codecs = { workspace = true }
+oracle-edit-raw = { workspace = true }
+oracle-edit-affinity = { workspace = true }
+oracle-edit-text = { workspace = true }
+oracle-edit-paint = { workspace = true }
+oracle-edit-vector = { workspace = true }
+oracle-edit-format = { path = "../format" }
 craft-docpath = { workspace = true }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
@@ -50,8 +50,8 @@ resvg = { version = "0.45", default-features = false, features = ["text", "raste
 
 [dev-dependencies]
 crc32fast = "1.5"
-photocraft-affinity = { workspace = true, features = ["synth"] }
+oracle-edit-affinity = { workspace = true, features = ["synth"] }
 flate2 = { workspace = true }
-photocraft-psd = { workspace = true, features = ["testgen"] }
-photocraft-raw = { workspace = true, features = ["testgen"] }
+oracle-edit-psd = { workspace = true, features = ["testgen"] }
+oracle-edit-raw = { workspace = true, features = ["testgen"] }
 proptest = { workspace = true }

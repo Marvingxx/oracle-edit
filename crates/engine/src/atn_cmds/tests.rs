@@ -1,6 +1,6 @@
 use super::*;
-use photocraft_psd::atn::{AtnAction, AtnEvent, AtnFile, AtnItem};
-use photocraft_psd::descriptor::{Descriptor, Id, ReferenceItem, UnicodeString, Value as D};
+use oracle_edit_psd::atn::{AtnAction, AtnEvent, AtnFile, AtnItem};
+use oracle_edit_psd::descriptor::{Descriptor, Id, ReferenceItem, UnicodeString, Value as D};
 use serde_json::json;
 
 fn item(event: &str, label: &str, d: Option<Descriptor>) -> AtnItem {
@@ -12,11 +12,11 @@ fn item(event: &str, label: &str, d: Option<Descriptor>) -> AtnItem {
 }
 
 fn b64(bytes: &[u8]) -> String {
-    photocraft_paint::tile::b64_encode(bytes)
+    oracle_edit_paint::tile::b64_encode(bytes)
 }
 
 /// A set with a mapped filter, an adjustment layer, selection steps, a layer by name, a Stop,
-/// a Play, a tool selection (no document effect) and an event PhotoCraft has no command for.
+/// a Play, a tool selection (no document effect) and an event Oracle Edit has no command for.
 fn sample() -> AtnFile {
     let levels = desc("Lvls").with(
         "Adjs",
@@ -172,7 +172,7 @@ fn save_round_trips_through_photoshop_events() {
     let r = s.execute("actions.save", json!({"set": "Test Set"})).unwrap();
     assert_eq!(r["actions"], json!(["Soften", "Finish"]));
     assert_eq!(r["skipped"], json!([]));
-    let saved = photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap();
+    let saved = oracle_edit_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap();
     let file = atn::parse(&saved).unwrap();
     assert_eq!(file.name.to_string_lossy(), "Test Set");
     assert_eq!(file.actions[0].function_key, 3);
@@ -210,7 +210,7 @@ fn a_selective_color_step_in_the_scalar_form_keeps_its_values() {
         s.actions.list.push(Action::new("A", vec![("image.adjustments.selectiveColor".into(), params)]));
         let r = s.execute("actions.save", json!({"action": "A"})).unwrap();
         assert_eq!(r["skipped"], json!([]));
-        let imported = import(&photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap();
+        let imported = import(&oracle_edit_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap();
         imported.actions[0].steps[0].1.clone()
     };
 
@@ -765,7 +765,7 @@ fn retouching_set_events_map_to_their_commands() {
     // event stay unsupported rather than play with other values.
     let unsupported: Vec<(&str, usize)> = imp.unsupported.iter().map(|u| (u.event.as_str(), u.step)).collect();
     assert_eq!(unsupported, [("colorRange", 4), ("colorRange", 5), ("set", 8), ("someFutureEvent", 12)]);
-    // A legacy PhotoCraft export's `Yllw` yellows still read.
+    // A legacy Oracle Edit export's `Yllw` yellows still read.
     let legacy = desc("null").with("ClrC", D::List(vec![D::Descriptor(desc("ClrC").with("Clrs", enm("Clrs", "Yllw")).with("Cyn ", pct(5.0)))]));
     assert_eq!(selective_from(&legacy), Some(json!({"yellows": [5.0, 0.0, 0.0, 0.0]})));
     // The mask of a named layer is not the target layer's mask: it stays unsupported.
@@ -1288,7 +1288,7 @@ fn distressing_and_remove_white_shapes_import_and_play() {
     let r = s.execute("actions.play", json!({"action": "Remove White"})).unwrap();
     assert!(r.get("failed").is_none(), "{r}");
     let d = &s.active().unwrap().doc;
-    assert_eq!(d.mode, photocraft_color::ColorMode::Grayscale);
+    assert_eq!(d.mode, oracle_edit_color::ColorMode::Grayscale);
     let l = d.layers.last().unwrap();
     assert!(!d.is_background(l.id), "Layer From Background");
     let surf = l.surface().unwrap();
@@ -1353,7 +1353,7 @@ fn remove_white_clears_the_targeted_layer_not_the_converted_background() {
     assert!(r.get("failed").is_none(), "{r}");
     let st = s.active().unwrap();
     assert_eq!(st.active_layer.map(|l| l.0), Some(art), "the art layer stays targeted");
-    let art = st.doc.layer(photocraft_doc::LayerId(art)).unwrap().surface().unwrap();
+    let art = st.doc.layer(oracle_edit_doc::LayerId(art)).unwrap().surface().unwrap();
     assert!(art.sample_channel(2, 2, 1) < 0.01, "the art's white is cleared");
     assert!(art.sample_channel(20, 15, 1) > 0.99, "the black stays");
     let bottom = st.doc.layers.first().unwrap();
@@ -1396,7 +1396,7 @@ fn events_photoshop_only_runs_by_name_export_by_name_and_old_codes_still_import(
         }
     }
 
-    // A whole set of Photoshop-shaped steps (names, FltI) and old PhotoCraft-shaped ones
+    // A whole set of Photoshop-shaped steps (names, FltI) and old Oracle Edit-shaped ones
     // (legacy codes) loads to the same commands.
     let blur = |event: &str| item(event, "Box Blur", Some(desc("null").with("Rds ", px(3.0))));
     let surface = |event: &str| item(event, "Surface Blur", Some(desc("null").with("Rds ", px(5.0)).with("Thsh", long(15.0))));
@@ -1412,7 +1412,7 @@ fn events_photoshop_only_runs_by_name_export_by_name_and_old_codes_still_import(
     assert_eq!(s.actions.list[1].steps[1].1, json!({"radius": 5, "threshold": 15}));
     // Saving them writes the ids Photoshop runs, never the old codes.
     let saved = s.execute("actions.save", json!({"set": "S"})).unwrap();
-    let file = atn::parse(&photocraft_paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()).unwrap();
+    let file = atn::parse(&oracle_edit_paint::tile::b64_decode(saved["data"].as_str().unwrap()).unwrap()).unwrap();
     let events: Vec<String> = file.actions.iter().flat_map(|a| a.items.iter().map(|i| i.event.id())).collect();
     assert_eq!(events, ["boxblur", "surfaceBlur", "FltI", "FltI", "boxblur", "surfaceBlur", "FltI"]);
 
@@ -1455,7 +1455,7 @@ fn smart_blur_quality_uses_photoshop_codes() {
     }
 
     // Photoshop-shaped steps (each quality and mode, as Photoshop stores them) and the codes
-    // PhotoCraft wrote before this fix read as the right quality.
+    // Oracle Edit wrote before this fix read as the right quality.
     let cases = [
         ("SBQH", "SBMN", "high", "normal"),
         ("SBQM", "SBMO", "medium", "overlayEdge"),
@@ -1484,7 +1484,7 @@ fn smart_blur_quality_uses_photoshop_codes() {
         desc("null"),
     ];
     let items: Vec<AtnItem> = odd.iter().map(|d| item("SmrB", "Smart Blur", Some(d.clone()))).collect();
-    let imported = import(&photocraft_paint::tile::b64_decode(&set_of("Odd", vec![("Odd", items)])).unwrap()).unwrap();
+    let imported = import(&oracle_edit_paint::tile::b64_decode(&set_of("Odd", vec![("Odd", items)])).unwrap()).unwrap();
     let steps = &imported.actions[0].steps;
     assert_eq!(steps.len(), odd.len());
     assert_eq!(steps[0].0, PHOTOSHOP_STEP, "an unknown quality is kept verbatim");
@@ -1644,7 +1644,7 @@ fn emboss_saves_as_photoshops_event_and_loads_back() {
     s.actions.list.push(Action::new("Pore", vec![("filter.stylize.emboss".into(), params.clone())]));
     let r = s.execute("actions.save", json!({"action": "Pore"})).unwrap();
     assert_eq!(r["skipped"], json!([]));
-    let saved = photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap();
+    let saved = oracle_edit_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap();
     let file = atn::parse(&saved).unwrap();
     let step = &file.actions[0].items[0];
     assert_eq!(step.event.id(), "Embs");
@@ -1658,7 +1658,7 @@ fn emboss_saves_as_photoshops_event_and_loads_back() {
 }
 
 /// A filter recorded against a layer mask must not export as a plain filter that edits the
-/// layer's pixels on replay: Photoshop's descriptor has no field for PhotoCraft's `target`.
+/// layer's pixels on replay: Photoshop's descriptor has no field for Oracle Edit's `target`.
 #[test]
 fn add_noise_with_mask_target_is_not_exported_as_pixel_filter() {
     let masked = Action {
@@ -1711,7 +1711,7 @@ fn function_keys_keep_shift_and_command() {
     assert_eq!(shortcuts.get("actions.play:Soften").map(String::as_str), Some("Shift+F3"));
     assert_eq!(shortcuts.get("actions.play:Finish").map(String::as_str), Some("Cmd+Shift+F5"));
     let r = s.execute("actions.save", json!({"set": "Test Set"})).unwrap();
-    let saved = atn::parse(&photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap();
+    let saved = atn::parse(&oracle_edit_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap()).unwrap();
     let keys: Vec<_> = saved.actions.iter().map(|a| (a.function_key, a.shift, a.command)).collect();
     assert_eq!(keys, [(3, true, false), (5, true, true)]);
 
@@ -1723,7 +1723,7 @@ fn function_keys_keep_shift_and_command() {
     assert_eq!(super::function_key_name(7, false, false), "F7");
 }
 
-/// A param a PhotoCraft step leaves out exports as PhotoCraft's default wherever Photoshop plays
+/// A param a Oracle Edit step leaves out exports as Oracle Edit's default wherever Photoshop plays
 /// the missing key differently (checked against Photoshop): Canvas Size anchors top left,
 /// Apply Image blends Normal, Color Balance turns preserve luminosity off, and a Paint Bucket
 /// step without a tolerance doesn't play at all.

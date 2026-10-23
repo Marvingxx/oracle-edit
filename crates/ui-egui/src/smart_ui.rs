@@ -4,12 +4,12 @@
 //! drag it up or down its own stack to reorder it).
 
 use egui::{Color32, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
-use photocraft_doc::{Document, Layer, LayerContent, LayerId, SmartObject};
+use oracle_edit_doc::{Document, Layer, LayerContent, LayerId, SmartObject};
 use serde_json::{Value, json};
 
 use crate::state::LayerThumbnailSize;
 use crate::theme::Tokens;
-use crate::{PhotocraftApp, icons};
+use crate::{OracleEditApp, icons};
 
 /// What the badge on a layer thumbnail marks the layer as.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,14 +60,14 @@ pub fn thumb_badge(ui: &egui::Ui, l: &Layer, thumb: Rect) {
 }
 
 /// The display name of a smart filter (its command's label without the ellipsis). A Photoshop
-/// filter PhotoCraft doesn't implement shows its own name and is marked as kept as is.
-pub(crate) fn filter_label(f: &photocraft_doc::SmartFilter) -> String {
+/// filter Oracle Edit doesn't implement shows its own name and is marked as kept as is.
+pub(crate) fn filter_label(f: &oracle_edit_doc::SmartFilter) -> String {
     let command = f.command.as_str();
-    if command == photocraft_engine::smart_cmds::UNSUPPORTED_FILTER {
+    if command == oracle_edit_engine::smart_cmds::UNSUPPORTED_FILTER {
         let name = f.params.get("name").and_then(Value::as_str).unwrap_or("Smart filter");
         return format!("{} (kept, not editable)", name.trim_end_matches("...").trim_end_matches('…'));
     }
-    photocraft_engine::commands::find(command)
+    oracle_edit_engine::commands::find(command)
         .map_or_else(|| command.rsplit('.').next().unwrap_or(command).to_string(), |c| tl!(c.label).trim_end_matches('…').to_string())
 }
 
@@ -96,7 +96,7 @@ pub fn paint_badge(painter: &egui::Painter, center: egui::Pos2, color: Color32) 
 }
 
 /// Paint the Smart Filters header and one row per filter of Smart Object `l` (top filter first), with their drag, drop and click handling; actions go to `actions`.
-pub fn filter_rows(app: &mut PhotocraftApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, depth: usize, actions: &mut Vec<(String, Value)>) {
+pub fn filter_rows(app: &mut OracleEditApp, ui: &mut egui::Ui, doc: &Document, l: &Layer, depth: usize, actions: &mut Vec<(String, Value)>) {
     let LayerContent::Smart(sm) = &l.content else { return };
     if sm.smart_filters.is_empty() {
         return;
@@ -232,7 +232,7 @@ pub(crate) fn drag_key() -> egui::Id {
 }
 
 /// The selected smart filter row of a document.
-fn selected_key(doc: photocraft_doc::DocId) -> egui::Id {
+fn selected_key(doc: oracle_edit_doc::DocId) -> egui::Id {
     egui::Id::new(("smart-filter-selected", doc))
 }
 
@@ -252,7 +252,7 @@ pub(crate) fn selected(ctx: &egui::Context, doc: &Document, active: Option<Layer
 
 /// Forgets the selected smart filter row: its smart object's own row was clicked, or the filter
 /// was deleted (its index would now name the next one).
-pub(crate) fn deselect(ctx: &egui::Context, doc: photocraft_doc::DocId) {
+pub(crate) fn deselect(ctx: &egui::Context, doc: oracle_edit_doc::DocId) {
     ctx.data_mut(|d| d.remove::<FilterDrag>(selected_key(doc)));
 }
 
@@ -353,11 +353,11 @@ pub(crate) fn trash_action((layer, filter): FilterDrag) -> (String, Value) {
 
 /// Re-opens a smart filter's dialog with its recorded parameters; OK runs
 /// `layer.smartFilter.setParams` instead of adding another filter (see `dialogs::confirm`).
-pub fn open_editor(app: &mut PhotocraftApp, ctx: &egui::Context, layer: u64, sm: &SmartObject, index: usize) {
+pub fn open_editor(app: &mut OracleEditApp, ctx: &egui::Context, layer: u64, sm: &SmartObject, index: usize) {
     let Some(f) = sm.smart_filters.get(index) else { return };
     // Camera Raw has its own full-window dialog rather than a generic parameter form.
-    if f.command == photocraft_engine::lens_cmds::RAW {
-        if let Err(e) = crate::camera_raw_ui::open_smart_filter(app, ctx, photocraft_doc::LayerId(layer), index) {
+    if f.command == oracle_edit_engine::lens_cmds::RAW {
+        if let Err(e) = crate::camera_raw_ui::open_smart_filter(app, ctx, oracle_edit_doc::LayerId(layer), index) {
             app.ui.status = e;
             app.ui.status_error = true;
         }
@@ -365,13 +365,13 @@ pub fn open_editor(app: &mut PhotocraftApp, ctx: &egui::Context, layer: u64, sm:
     }
     // So has the Filter Gallery.
     if f.command == "filter.filterGallery" {
-        if let Err(e) = crate::gallery_ui::open_smart_filter(app, photocraft_doc::LayerId(layer), index) {
+        if let Err(e) = crate::gallery_ui::open_smart_filter(app, oracle_edit_doc::LayerId(layer), index) {
             app.ui.status = e;
             app.ui.status_error = true;
         }
         return;
     }
-    let target = match crate::smart_filter_dialog::target(app, photocraft_doc::LayerId(layer), index) {
+    let target = match crate::smart_filter_dialog::target(app, oracle_edit_doc::LayerId(layer), index) {
         Ok(target) => target,
         Err(e) => {
             crate::notices::error(app, e);
@@ -415,7 +415,7 @@ pub fn preview_command<'a>(fields: &serde_json::Map<String, Value>, command: &'a
 }
 
 /// The command a confirmed filter dialog runs: smart-filter edits update the recorded filter.
-pub fn confirm_command(app: &PhotocraftApp, fields: &serde_json::Map<String, Value>, command: String, params: Value) -> Result<(String, Value), String> {
+pub fn confirm_command(app: &OracleEditApp, fields: &serde_json::Map<String, Value>, command: String, params: Value) -> Result<(String, Value), String> {
     // One builder for the preview and for OK, so the two cannot differ.
     if fields.contains_key("__smartFilter") {
         return crate::smart_filter_dialog::edit_command(app, fields);
@@ -434,7 +434,7 @@ mod layer_thumbnail_scaling_tests {
     #[test]
     fn sub_rows_stay_compact_while_the_smart_filter_mask_follows_thumbnail_setting() {
         for setting in [LayerThumbnailSize::None, LayerThumbnailSize::Small, LayerThumbnailSize::Medium, LayerThumbnailSize::Large] {
-            let mut session = photocraft_engine::Session::new();
+            let mut session = oracle_edit_engine::Session::new();
             session.execute("file.new", json!({"width": 50, "height": 38})).unwrap();
             session.execute("edit.fill", json!({"color": "#8A42B3"})).unwrap();
             session.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
@@ -443,8 +443,8 @@ mod layer_thumbnail_scaling_tests {
             session.execute("layer.layerStyle.dropShadow", json!({"size": 2})).unwrap();
             assert!(matches!(session.active().unwrap().doc.layers.last().unwrap().content, LayerContent::Smart(_)));
             let mut h = Harness::builder().with_size(vec2(1440.0, 1400.0)).with_max_steps(64).build_eframe(move |cc| {
-                PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-                PhotocraftApp::new(session, crate::Services::default())
+                OracleEditApp::setup_context(&cc.egui_ctx, Default::default());
+                OracleEditApp::new(session, crate::Services::default())
             });
             h.state_mut().ui.layers_panel_options.thumbnail_size = setting;
             h.run_steps(8);
@@ -459,7 +459,7 @@ mod layer_thumbnail_scaling_tests {
             assert!((rect.height() - header).abs() < 1.0, "{setting:?}: Smart Filters was {rect:?}, expected {header}");
             assert!(mask <= header - 6.0 || mask == 0.0, "{setting:?}: a {mask} mask must fit a {header} row");
             assert_eq!(mask == 0.0, setting == LayerThumbnailSize::None, "{setting:?}: the mask hides only at None");
-            if let Some(dir) = std::env::var_os("PHOTOCRAFT_LAYERS_SNAPSHOTS") {
+            if let Some(dir) = std::env::var_os("ORACLE_EDIT_LAYERS_SNAPSHOTS") {
                 let dir = std::path::PathBuf::from(dir);
                 std::fs::create_dir_all(&dir).unwrap();
                 h.render().unwrap().save(dir.join(format!("layers-sub-rows-{setting:?}.png"))).unwrap();
@@ -474,7 +474,7 @@ mod tests {
 
     /// A pixel layer, a shape layer and a smart object, in that order.
     fn layers() -> [Layer; 3] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = oracle_edit_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         // An empty layer can't become a smart object: fill it first.
         s.execute("layer.new.layer", json!({})).unwrap();
@@ -483,7 +483,7 @@ mod tests {
         let shape = s.execute("shape.create", json!({"kind": "rect", "rect": [8, 8, 40, 24], "fill": "#cc3333"})).unwrap()["layer"].as_u64().unwrap();
         let pixel = s.execute("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap();
         let doc = &s.active().unwrap().doc;
-        [pixel, shape, smart].map(|id| doc.layer(photocraft_doc::LayerId(id)).unwrap().clone())
+        [pixel, shape, smart].map(|id| doc.layer(oracle_edit_doc::LayerId(id)).unwrap().clone())
     }
 
     /// Stack [A, B, C] (A at the bottom, drawn last): where a dragged filter lands.
@@ -558,14 +558,14 @@ mod tests {
     /// filter instead of stacking another.
     #[test]
     fn an_adjustment_smart_filter_opens_its_editor_and_updates_it() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = oracle_edit_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         s.execute("edit.fill", json!({"contents": "black"})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("image.adjustments.brightnessContrast", json!({"brightness": 40, "contrast": -10})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
-        let sm = match &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content {
+        let mut app = OracleEditApp::new(s, crate::Services::default());
+        let sm = match &app.session.active().unwrap().doc.layer(oracle_edit_doc::LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
             other => panic!("expected a smart object, got {other:?}"),
         };
@@ -578,7 +578,7 @@ mod tests {
         let dialog = d.id;
         // OK updates the recorded filter (one history step), it does not add a second filter.
         crate::dialogs::confirm(&mut app, dialog).unwrap();
-        let LayerContent::Smart(sm) = &app.session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content else {
+        let LayerContent::Smart(sm) = &app.session.active().unwrap().doc.layer(oracle_edit_doc::LayerId(id)).unwrap().content else {
             panic!("the layer stays a smart object");
         };
         assert_eq!(sm.smart_filters.len(), 1, "no filter was stacked");
@@ -590,7 +590,7 @@ mod tests {
     /// the stack (as OK does) instead of stacking a second one.
     #[test]
     fn an_edited_smart_filter_previews_what_ok_gives() {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = oracle_edit_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48, "background": "#ffffff"})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         s.execute("select.all", json!({})).unwrap();
@@ -598,9 +598,9 @@ mod tests {
         s.execute("select.deselect", json!({})).unwrap();
         let id = s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap()["layer"].as_u64().unwrap();
         s.execute("filter.blur.gaussianBlur", json!({"radius": 1.0})).unwrap();
-        let mut app = PhotocraftApp::new(s, crate::Services::default());
+        let mut app = OracleEditApp::new(s, crate::Services::default());
         app.background_jobs = false;
-        let smart = |app: &PhotocraftApp, doc: &Document| match &doc.layer(LayerId(id)).unwrap().content {
+        let smart = |app: &OracleEditApp, doc: &Document| match &doc.layer(LayerId(id)).unwrap().content {
             LayerContent::Smart(sm) => sm.clone(),
             other => panic!("expected a smart object, got {other:?} ({})", app.ui.status),
         };
@@ -627,6 +627,6 @@ mod tests {
         crate::dialogs::confirm(&mut app, dialog).unwrap();
         let doc = &app.session.active().unwrap().doc;
         assert_eq!(smart(&app, doc).smart_filters.len(), 1);
-        assert!(photocraft_compose::flatten(&shown).px == photocraft_compose::flatten(doc).px, "OK gives what the preview showed");
+        assert!(oracle_edit_compose::flatten(&shown).px == oracle_edit_compose::flatten(doc).px, "OK gives what the preview showed");
     }
 }

@@ -1,6 +1,6 @@
 # Release security
 
-PhotoCraft's release workflow builds platform packages and a draft GitHub Release from the `release` branch. The authoritative process is [`docs/releasing.md`](https://github.com/storytold/photocraft/blob/main/docs/releasing.md).
+Oracle Edit's release workflow builds platform packages and a draft GitHub Release from the `release` branch. The authoritative process is [`docs/releasing.md`](https://github.com/Marvingxx/oracle-edit/blob/main/docs/releasing.md).
 
 ## Implemented workflow elements
 

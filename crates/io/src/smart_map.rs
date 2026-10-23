@@ -14,7 +14,7 @@
 //! ```
 //!
 //! The list is in application order (first = bottom, applied first), like
-//! [`SmartObject::smart_filters`](photocraft_doc::SmartObject). Filters PhotoCraft implements map
+//! [`SmartObject::smart_filters`](oracle_edit_doc::SmartObject). Filters Oracle Edit implements map
 //! to their command id and dialog parameters; any other filter becomes a
 //! [`UNSUPPORTED_FILTER`] entry that keeps its descriptor verbatim (hex in `params.psd`), so it is
 //! listed, can be hidden, reordered or deleted, and is written back unchanged.
@@ -24,15 +24,15 @@
 //! Warp (`perspective_warp_map.rs`), whose quads become the planes of its command. Hue/Saturation
 //! (`HStr`) maps to its adjustment command in `hue_sat_filter_map.rs`.
 
-use photocraft_color::{BlendMode, ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{LayerMask, SmartFilter};
-use photocraft_geom::warp::{BezierMesh, Warp, WarpStyle};
-use photocraft_geom::{Affine, Rect as GeomRect};
-use photocraft_psd::Compression;
-use photocraft_psd::Rect as PsdRect;
-use photocraft_psd::descriptor::{Class, Descriptor, Id, ObjectArray, ReferenceItem, UnicodeString, Value, VersionedDescriptor};
-use photocraft_psd::filter_effects::{EffectsPlane, FilterEffectsItem};
-use photocraft_raster::Surface;
+use oracle_edit_color::{BlendMode, ColorMode, PixelFormat, SampleType};
+use oracle_edit_doc::{LayerMask, SmartFilter};
+use oracle_edit_geom::warp::{BezierMesh, Warp, WarpStyle};
+use oracle_edit_geom::{Affine, Rect as GeomRect};
+use oracle_edit_psd::Compression;
+use oracle_edit_psd::Rect as PsdRect;
+use oracle_edit_psd::descriptor::{Class, Descriptor, Id, ObjectArray, ReferenceItem, UnicodeString, Value, VersionedDescriptor};
+use oracle_edit_psd::filter_effects::{EffectsPlane, FilterEffectsItem};
+use oracle_edit_raster::Surface;
 use serde_json::{Map, Value as J, json};
 
 use crate::blocks::{enum_of, get_desc, num};
@@ -48,7 +48,7 @@ mod perspective_warp;
 
 pub use displace::{embed_map as displace_embed_map, embedded_map as displace_embedded_map, without_map as displace_without_map};
 
-/// Command id of a Photoshop smart filter PhotoCraft does not implement. Its params hold the
+/// Command id of a Photoshop smart filter Oracle Edit does not implement. Its params hold the
 /// filter's name, Photoshop filter id and descriptor (`psd`, hex); it renders as a pass-through.
 pub const UNSUPPORTED_FILTER: &str = "psd.unsupportedFilter";
 
@@ -137,7 +137,7 @@ pub fn filter_stack(fx: &Descriptor) -> FilterStack {
 
 // ---------- the filters we model ----------
 
-/// Photoshop filter → PhotoCraft command, keyed by the `Fltr` class (and `filterID`).
+/// Photoshop filter → Oracle Edit command, keyed by the `Fltr` class (and `filterID`).
 struct Known {
     class: &'static str,
     filter_id: i32,
@@ -224,7 +224,7 @@ const NO_OPTIONS: [&str; 11] = ["Blr ", "BlrM", "Avrg", "Dspc", "FndE", "Fct ", 
 // Dust & Scratches (filterID DstS): DstS { Rds  long, Thsh long }
 // ```
 //
-// PhotoCraft's Smart Sharpen removes a Gaussian blur, non-legacy: Lens Blur, Motion Blur, legacy
+// Oracle Edit's Smart Sharpen removes a Gaussian blur, non-legacy: Lens Blur, Motion Blur, legacy
 // mode, Shadow/Highlight settings or any other key keep the whole entry verbatim. `presetKind`
 // only names the dialog's preset: it is accepted on open but not kept (the engine takes no such
 // parameter) and not written (Photoshop leaves it out of entries with explicit values).
@@ -240,7 +240,7 @@ fn unit_in(d: &Descriptor, key: &str, u: &[u8; 4], lo: f64, hi: f64) -> Option<f
     }
 }
 
-/// `filter.sharpen.smartSharpen` params; `None` for a setting PhotoCraft doesn't render.
+/// `filter.sharpen.smartSharpen` params; `None` for a setting Oracle Edit doesn't render.
 fn smart_sharpen_params(f: &Descriptor) -> Option<J> {
     if f.items.iter().any(|(k, _)| !SMART_SHARPEN_KEYS.iter().any(|x| k.is(x))) {
         return None;
@@ -782,7 +782,7 @@ fn gallery_item(f: &SmartFilter) -> Result<Descriptor, String> {
         }) {
             return Err(format!("gallery setting `{key}.{k}` has no PSD equivalent"));
         }
-        let defaults = photocraft_algo::GalleryFilter::from_key(key).map(photocraft_algo::GalleryEffect::new);
+        let defaults = oracle_edit_algo::GalleryFilter::from_key(key).map(oracle_edit_algo::GalleryEffect::new);
         let settings: Vec<(&str, Value)> =
             g.settings.iter().map(|(psd, ours)| (*psd, pi(params, ours, defaults.as_ref().map_or(0.0, |x| f64::from(x.get(ours)))))).collect();
         out.push((g.code, settings, e.get("visible").and_then(J::as_bool).unwrap_or(true)));
@@ -1254,7 +1254,7 @@ fn quad_points(s: &PlacedSpec<'_>, warp: Option<&Warp>) -> [f64; 8] {
     let (w, h) = s.size;
     let [a, b, c, d, e, f] = s.transform.m;
     let map = |x: f64, y: f64| match &s.perspective {
-        Some(p) => photocraft_algo::transform::Homography(*p).apply(x, y),
+        Some(p) => oracle_edit_algo::transform::Homography(*p).apply(x, y),
         None => (a * x + c * y + e, b * x + d * y + f),
     };
     let [x0, y0, x1, y1] = if s.perspective.is_some() { [0.0, 0.0, w, h] } else { crate::blocks::placed_frame(warp, w, h) };
@@ -1592,7 +1592,7 @@ pub fn feid_item(placed: &str, unfiltered: &Surface, mask: Option<&LayerMask>, b
     // Fully transparent pixels carry white, as in Photoshop's own cache: filters that look at
     // colour regardless of alpha (Shadows/Highlights) read it.
     let mut vals = px.read_region(r);
-    let white = photocraft_raster::from_rgba(&doc_fmt, [1.0, 1.0, 1.0, 1.0]);
+    let white = oracle_edit_raster::from_rgba(&doc_fmt, [1.0, 1.0, 1.0, 1.0]);
     for p in vals.chunks_exact_mut(cc + 1) {
         if p[cc] <= 0.0 {
             p[..cc].copy_from_slice(&white[..cc]);
@@ -1855,7 +1855,7 @@ mod tests {
         Descriptor::new("DstS").with("Rds ", Value::Integer(radius)).with("Thsh", Value::Integer(threshold))
     }
 
-    /// The `Fltr` descriptor PhotoCraft writes for `f`, after a byte round trip.
+    /// The `Fltr` descriptor Oracle Edit writes for `f`, after a byte round trip.
     fn written_fltr(f: &SmartFilter) -> Descriptor {
         let d = Descriptor::from_bytes(&item_for_filter(f).unwrap().to_bytes()).unwrap();
         get_desc(&d, "Fltr").unwrap().clone()
@@ -1894,12 +1894,12 @@ mod tests {
             assert_eq!(written_fltr(&f), smart_sharpen(200.0, 1.0, 10.0, "GsnB"));
         }
 
-        // Without options PhotoCraft writes the engine's defaults, Gaussian Blur.
+        // Without options Oracle Edit writes the engine's defaults, Gaussian Blur.
         assert_eq!(written_fltr(&sf("filter.sharpen.smartSharpen", json!({}))), smart_sharpen(100.0, 1.0, 10.0, "GsnB"));
     }
 
     /// Lens Blur (Photoshop's default), Motion Blur and legacy mode render differently from
-    /// PhotoCraft's Smart Sharpen, so those entries stay verbatim.
+    /// Oracle Edit's Smart Sharpen, so those entries stay verbatim.
     #[test]
     fn smart_sharpen_settings_we_dont_render_stay_verbatim() {
         let mut default_entry = Descriptor::new("smartSharpen").with("presetKind", enumv("presetKindType", "presetKindDefault"));
@@ -2491,7 +2491,7 @@ mod tests {
             assert_eq!((f.command.as_str(), &f.params), ("filter.pixelate.mezzotint", &json!({"type": ty})));
         }
         // No type or an unknown type is Fine Dots, like the engine; the seed
-        // (PhotoCraft only) is not saved.
+        // (Oracle Edit only) is not saved.
         for p in [json!({}), json!({"type": "sparkles"}), json!({"type": "fineDots", "seed": 77})] {
             let d = item_for_filter(&sf("filter.pixelate.mezzotint", p)).unwrap();
             let fltr = get_desc(&d, "Fltr").unwrap();
@@ -3042,7 +3042,7 @@ mod tests {
     #[test]
     fn gallery_table_matches_the_gallery_filters() {
         for g in &GALLERY_EFFECTS {
-            let f = photocraft_algo::GalleryFilter::from_key(g.key).unwrap();
+            let f = oracle_edit_algo::GalleryFilter::from_key(g.key).unwrap();
             let keys: Vec<&str> = f.params().iter().map(|p| p.key).collect();
             for (_, ours) in g.settings {
                 assert!(keys.contains(ours), "{}.{ours}", g.key);
@@ -3137,9 +3137,9 @@ mod tests {
             assert!((a - b).abs() < 1e-9);
         }
         assert_eq!(p.stack, Some(stack));
-        let tb = photocraft_psd::TaggedBlock::new(*b"SoLd", sold.clone());
+        let tb = oracle_edit_psd::TaggedBlock::new(*b"SoLd", sold.clone());
         tb.check_structure().unwrap();
-        let pl = photocraft_psd::TaggedBlock::new(*b"PlLd", plld_bytes(&spec, &mut w));
+        let pl = oracle_edit_psd::TaggedBlock::new(*b"PlLd", plld_bytes(&spec, &mut w));
         pl.check_structure().unwrap();
         // A template keeps its other keys; an unmoved transform keeps its exact quad.
         let mut tmpl = sold_descriptor(&sold).unwrap();
@@ -3155,7 +3155,7 @@ mod tests {
     /// and comes back as the same projective map; an affine one reads back as no perspective.
     #[test]
     fn perspective_placement_round_trips_through_sold() {
-        let h = photocraft_algo::transform::Homography::rect_to_quad([0.0, 0.0, 64.0, 32.0], [[10.0, 5.0], [80.0, 8.0], [70.0, 50.0], [12.0, 40.0]]).unwrap();
+        let h = oracle_edit_algo::transform::Homography::rect_to_quad([0.0, 0.0, 64.0, 32.0], [[10.0, 5.0], [80.0, 8.0], [70.0, 50.0], [12.0, 40.0]]).unwrap();
         let mut w = Vec::new();
         let mut spec = PlacedSpec {
             idnt: "id",
@@ -3194,7 +3194,7 @@ mod tests {
         assert!(quad_moved(&template, &spec, spec.warp), "moved half a pixel");
         spec.transform = t;
         spec.perspective =
-            photocraft_algo::transform::Homography::rect_to_quad([0.0, 0.0, 20.0, 10.0], [[3.0, 4.0], [23.0, 4.0], [20.0, 12.0], [3.0, 14.0]]).map(|h| h.0);
+            oracle_edit_algo::transform::Homography::rect_to_quad([0.0, 0.0, 20.0, 10.0], [[3.0, 4.0], [23.0, 4.0], [20.0, 12.0], [3.0, 14.0]]).map(|h| h.0);
         assert!(quad_moved(&template, &spec, spec.warp), "one corner moved (Distort)");
         assert!(quad_moved(&Descriptor::new("null"), &spec, spec.warp), "no stored quad");
     }
@@ -3247,7 +3247,7 @@ mod tests {
 
     #[test]
     fn warps_are_written_and_read_back() {
-        use photocraft_geom::warp::BezierMesh;
+        use oracle_edit_geom::warp::BezierMesh;
         let bounds = [0.0, 0.0, 60.0, 30.0];
         let mut custom = BezierMesh::identity(bounds, 1, 1);
         custom.points[15] = [67.0, 30.0];
@@ -3285,7 +3285,7 @@ mod tests {
 
     /// A 3 × 2 patch split warp over the 50 × 25 source with one interior control point pulled.
     fn split_warp() -> Warp {
-        use photocraft_geom::warp::BezierMesh;
+        use oracle_edit_geom::warp::BezierMesh;
         let mut mesh = BezierMesh::identity([0.0, 0.0, 50.0, 25.0], 3, 2);
         mesh.points[10 * 3 + 4][1] += 3.0;
         Warp::custom(mesh, [0.0, 0.0, 50.0, 25.0])
@@ -3351,7 +3351,7 @@ mod tests {
     /// still framed its control box: the layer came back stretched and shifted.
     #[test]
     fn a_split_warp_past_the_quilt_limit_keeps_its_placement() {
-        use photocraft_geom::warp::BezierMesh;
+        use oracle_edit_geom::warp::BezierMesh;
         let mut mesh = BezierMesh::identity([0.0, 0.0, 50.0, 25.0], crate::blocks::QUILT_MAX_PATCHES, 1);
         assert!(mesh.split_u(0.005));
         mesh.points[0] = [-10.0, -5.0];
@@ -3393,7 +3393,7 @@ mod tests {
     /// came back stretched and shifted.
     #[test]
     fn split_warp_round_trips_through_sold() {
-        use photocraft_geom::warp::BezierMesh;
+        use oracle_edit_geom::warp::BezierMesh;
         let mut mesh = BezierMesh::identity([0.0, 0.0, 50.0, 25.0], 2, 1);
         mesh.points[0] = [-10.0, -5.0];
         let warp = Warp::custom(mesh, [0.0, 0.0, 50.0, 25.0]);
@@ -3424,7 +3424,7 @@ mod tests {
     /// to one patch or to another mesh reads back as changed, not as the imported split warp.
     #[test]
     fn a_replaced_split_warp_does_not_come_back() {
-        use photocraft_geom::warp::BezierMesh;
+        use oracle_edit_geom::warp::BezierMesh;
         let bounds = [0.0, 0.0, 50.0, 25.0];
         let split = split_warp();
         let template = photoshop_template(&split);
@@ -3488,7 +3488,7 @@ mod tests {
     /// import: a spilled mesh comes back with the same transform and the quad Photoshop expects.
     #[test]
     fn warp_control_box_quad_round_trips() {
-        use photocraft_geom::warp::BezierMesh;
+        use oracle_edit_geom::warp::BezierMesh;
         let mut mesh = BezierMesh::identity([0.0, 0.0, 50.0, 25.0], 1, 1);
         mesh.points[0] = [-10.0, -5.0];
         mesh.points[15] = [60.0, 25.0];
@@ -3635,7 +3635,7 @@ mod tests {
     }
 
     #[test]
-    fn render_filters_made_in_photocraft_are_written() {
+    fn render_filters_made_in_oracle_edit_are_written() {
         // Without colours (an older document or a script), Photoshop's default black and white.
         let back = filter_from_item(&item_for_filter(&sf("filter.render.clouds", json!({"seed": 7}))).unwrap());
         assert_eq!(back.params, json!({"seed": 7, "foreground": [0.0, 0.0, 0.0, 1.0], "background": [1.0, 1.0, 1.0, 1.0]}));

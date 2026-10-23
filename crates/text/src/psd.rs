@@ -9,13 +9,13 @@
 //! Writing starts from the layer's original `TySh` (when present) and patches only the text, runs,
 //! paragraphs, fonts, shape and transform, so Photoshop-only settings survive an edit.
 
-use photocraft_color::{Color, ColorMode};
-use photocraft_doc::TextLayer;
-use photocraft_doc::text::{
+use oracle_edit_color::{Color, ColorMode};
+use oracle_edit_doc::TextLayer;
+use oracle_edit_doc::text::{
     AntiAlias, Caps, CharStyle, FontBaseline, Kerning, Orientation, ParagraphRun, ParagraphStyle, TextAlign, TextRun, TextShape, TextWarp,
 };
-use photocraft_geom::{Affine, Point};
-use photocraft_psd::descriptor::{Descriptor, Id, UnicodeString, Value as D, VersionedDescriptor};
+use oracle_edit_geom::{Affine, Point};
+use oracle_edit_psd::descriptor::{Descriptor, Id, UnicodeString, Value as D, VersionedDescriptor};
 
 use crate::engine_data::{self as ed, Value as E};
 use crate::fonts::guess_from_postscript;
@@ -266,7 +266,7 @@ pub fn apply_txt2_frame(layer: &mut TextLayer, tysh: &[u8], txt2: &E) {
         return;
     }
     // The frame's origin (point text: the anchor; box text: the box's top left) must land in
-    // the text-space `bounds` Photoshop wrote beside it, and not already be there without it. A `TySh` PhotoCraft rewrote (an edited
+    // the text-space `bounds` Photoshop wrote beside it, and not already be there without it. A `TySh` Oracle Edit rewrote (an edited
     // or moved layer whose text is unchanged keeps its old `Txt2` object and frame) already has
     // the frame folded into its transform and its `bounds` near the origin: applying the frame
     // again would move it twice.
@@ -318,7 +318,7 @@ pub const TXT2_STYLISTIC_SETS: &str = "85";
 fn add_txt2_features(style: &mut CharStyle, txt2_style: &E) {
     let mut set = |tag: String, value: u16| {
         if !style.features.iter().any(|f| f.tag == tag) {
-            style.features.push(photocraft_doc::text::FontFeature { tag, value });
+            style.features.push(oracle_edit_doc::text::FontFeature { tag, value });
         }
     };
     for (key, tag) in TXT2_FEATURES {
@@ -627,7 +627,7 @@ pub(crate) fn char_style(base: Option<&E>, d: &E, fonts: &[String], k: f32) -> C
     s.discretionary_ligatures = flag("DLigatures").unwrap_or(false);
     for (key, tag) in OPENTYPE_KEYS {
         if flag(key) == Some(true) {
-            s.features.push(photocraft_doc::text::FontFeature { tag: tag.to_string(), value: 1 });
+            s.features.push(oracle_edit_doc::text::FontFeature { tag: tag.to_string(), value: 1 });
         }
     }
     s.kerning = if flag("AutoKerning") == Some(false) { Kerning::Off } else { Kerning::Metrics };
@@ -1714,7 +1714,7 @@ mod nonfinite_tests {
     /// #5645: `FontBaseline` (1 superscript, 2 subscript) is read and written back.
     #[test]
     fn font_baseline_round_trips() {
-        use photocraft_doc::text::FontBaseline;
+        use oracle_edit_doc::text::FontBaseline;
         let d = parse(b"<< /FontBaseline 2 >>").unwrap();
         assert_eq!(char_style(None, &d, &[], 1.0).baseline, FontBaseline::Subscript);
         let d = parse(b"<< /FontBaseline 1 >>").unwrap();

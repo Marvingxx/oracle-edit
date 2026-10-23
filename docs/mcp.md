@@ -6,11 +6,11 @@ From the repository root, with the [source-build prerequisites](development.md#p
 installed, install the CLI independently of the build directory:
 
 ```sh
-cargo install --path apps/photocraft-cli --locked
+cargo install --path apps/oracle-edit-cli --locked
 # POSIX shells, for Cargo's default install location:
 export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
-photocraft-cli --help
-photocraft-cli mcp --help
+oracle-edit-cli --help
+oracle-edit-cli mcp --help
 ```
 
 Cargo installs a binary, not a symlink into `target/`, so it survives `cargo clean`.
@@ -24,22 +24,22 @@ the client after changing its environment.
 Register the installed command explicitly (replace `/work/project` with an existing folder):
 
 ```sh
-claude mcp add photocraft -- photocraft-cli mcp --automation-read-root /work/project --automation-write-root /work/project
+claude mcp add oracle-edit -- oracle-edit-cli mcp --automation-read-root /work/project --automation-write-root /work/project
 ```
 
 Other MCP clients can use this bare-name configuration:
 
 ```json
-{"mcpServers":{"photocraft":{"command":"photocraft-cli","args":["mcp","--automation-read-root","/work/project","--automation-write-root","/work/project"]}}}
+{"mcpServers":{"oracle-edit":{"command":"oracle-edit-cli","args":["mcp","--automation-read-root","/work/project","--automation-write-root","/work/project"]}}}
 ```
 
-Linux `.deb` and `.rpm` packages already install `/usr/bin/photocraft-cli`; those users
+Linux `.deb` and `.rpm` packages already install `/usr/bin/oracle-edit-cli`; those users
 can skip the source install. Other release locations are listed in the
 [installed-release guide](../book/src/automation/mcp.md#from-an-installed-release).
 Installing the CLI does not start or register an MCP server automatically.
 
 If a client reports `ENOENT` or "Executable not found in $PATH", verify the install with
-`command -v photocraft-cli` (PowerShell: `Get-Command photocraft-cli`) in the client's
+`command -v oracle-edit-cli` (PowerShell: `Get-Command oracle-edit-cli`) in the client's
 environment. If that environment cannot be changed, set JSON `command` to the absolute
 installed binary path, not a literal `~` or `$HOME` expression. Avoid symlinks into
 `target/release`: cleaning the build directory breaks them. A source build alone does
@@ -47,10 +47,10 @@ not put the CLI on `PATH`.
 
 ## Start a session
 
-PhotoCraft follows the same conventions as FilmCraft #28. Start a headless session:
+Oracle Edit follows the same conventions as FilmCraft #28. Start a headless session:
 
 ```sh
-photocraft-cli mcp --automation-read-root /work/project --automation-write-root /work/project
+oracle-edit-cli mcp --automation-read-root /work/project --automation-write-root /work/project
 ```
 
 Paths are relative to the corresponding root, or absolute paths beneath it; without a root that
@@ -106,7 +106,7 @@ No filesystem root is needed for the in-memory commands. External linked sources
 a file read remain refused. See the [control policy](control-protocol.md#engine-commands)
 for the shared restrictions.
 
-`photocraft://document` and `photocraft://commands` return live JSON matching `doc_inspect`
+`oracle-edit://document` and `oracle-edit://commands` return live JSON matching `doc_inspect`
 and `command_list`. Resource reads are uncached; tool/resource catalogs are private and cached
 for ten minutes. List/read responses include the MCP 2026-07-28 result/cache fields.
 

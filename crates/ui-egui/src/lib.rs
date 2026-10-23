@@ -1,7 +1,7 @@
-//! PhotoCraft's first UI shell, built on egui/eframe.
+//! Oracle Edit's first UI shell, built on egui/eframe.
 //!
 //! This crate is deliberately thin. Every action goes through
-//! [`photocraft_engine::Session::execute`], and all UI state lives in [`state::UiState`] (plain
+//! [`oracle_edit_engine::Session::execute`], and all UI state lives in [`state::UiState`] (plain
 //! data). The [`control`] module exposes both to automation, so agents can drive and inspect every
 //! part of the interface.
 #![forbid(unsafe_code)]
@@ -252,8 +252,8 @@ pub mod zoom_tool;
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use photocraft_doc::{DocId, Document};
-use photocraft_engine::Session;
+use oracle_edit_doc::{DocId, Document};
+use oracle_edit_engine::Session;
 use serde_json::{Value, json};
 
 pub use control::{ControlRequest, ControlResponse};
@@ -280,15 +280,15 @@ pub struct ExportSettings {
     pub xmp_all: bool,
     /// Targa: bits per pixel from Targa Options or Export As (`None`: 32 with an alpha channel or
     /// transparency, else 24).
-    pub tga_bits: Option<photocraft_io::TgaBits>,
+    pub tga_bits: Option<oracle_edit_io::TgaBits>,
     /// DDS: the compression and mip chain from DDS Options (uncompressed without mipmaps unless
     /// chosen).
-    pub dds: photocraft_io::DdsOptions,
+    pub dds: oracle_edit_io::DdsOptions,
     /// PSD/PSB: embed a thumbnail (Preferences › File Handling › Image Previews; see
-    /// [`PhotocraftApp::save_settings`]).
+    /// [`OracleEditApp::save_settings`]).
     pub image_previews: bool,
     /// PSD/PSB: write the real merged image (Preferences › File Handling › Maximize PSD and PSB
-    /// File Compatibility; see [`PhotocraftApp::save_settings`]).
+    /// File Compatibility; see [`OracleEditApp::save_settings`]).
     pub psd_maximize_compatibility: bool,
     /// Embed the document's ICC profile when the format supports it. On for Save As and, unless
     /// Export As turns it off, for export.
@@ -297,10 +297,10 @@ pub struct ExportSettings {
     /// turns this off for Metadata: None; Save As leaves it on.
     pub embed_metadata: bool,
     /// The path of the document's own file, which linked smart objects that PSD/PSB embed are
-    /// resolved against ([`photocraft_io::ExportOptions::document_path`]).
+    /// resolved against ([`oracle_edit_io::ExportOptions::document_path`]).
     pub document_path: Option<std::path::PathBuf>,
     /// Native save cache owned by the open document; exports without one remain one-shot.
-    pub pcraft_cache: Option<photocraft_io::PcraftExportCache>,
+    pub pcraft_cache: Option<oracle_edit_io::PcraftExportCache>,
 }
 
 impl Default for ExportSettings {
@@ -312,7 +312,7 @@ impl Default for ExportSettings {
             tiff_layers: true,
             xmp_all: true,
             tga_bits: None,
-            dds: photocraft_io::DdsOptions::default(),
+            dds: oracle_edit_io::DdsOptions::default(),
             image_previews: true,
             psd_maximize_compatibility: true,
             embed_icc: true,
@@ -326,8 +326,8 @@ impl Default for ExportSettings {
 impl ExportSettings {
     /// The IO export options these encoder settings select. Save As and Export As share this so
     /// a profile or metadata choice cannot be applied in one and forgotten in the other.
-    pub fn io_options(&self) -> photocraft_io::ExportOptions {
-        let mut opts = photocraft_io::ExportOptions::default();
+    pub fn io_options(&self) -> oracle_edit_io::ExportOptions {
+        let mut opts = oracle_edit_io::ExportOptions::default();
         if let Some(q) = self.jpeg_quality {
             opts.encode.jpeg_quality = q;
         }
@@ -338,7 +338,7 @@ impl ExportSettings {
         opts.encode.embed_icc = self.embed_icc;
         opts.encode.embed_metadata = self.embed_metadata;
         opts.tiff_layers = self.tiff_layers;
-        opts.xmp = if self.xmp_all { photocraft_io::XmpEmbed::All } else { photocraft_io::XmpEmbed::None };
+        opts.xmp = if self.xmp_all { oracle_edit_io::XmpEmbed::All } else { oracle_edit_io::XmpEmbed::None };
         opts.tga_bits = self.tga_bits;
         opts.encode.dds = self.dds;
         opts.image_previews = self.image_previews;
@@ -354,8 +354,8 @@ impl ExportSettings {
 /// default in automation saves, which never prompt.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct FormatChoices {
-    pub tga_bits: Option<photocraft_io::TgaBits>,
-    pub dds: Option<photocraft_io::DdsOptions>,
+    pub tga_bits: Option<oracle_edit_io::TgaBits>,
+    pub dds: Option<oracle_edit_io::DdsOptions>,
 }
 
 impl FormatChoices {
@@ -382,10 +382,10 @@ impl FormatChoices {
 
 /// The document's lone layer when it is a plain raster a flat file keeps: visible, at full
 /// opacity, in Normal mode, with no masks, effects or blending restrictions (#2234).
-pub(crate) fn plain_raster(doc: &Document) -> Option<&photocraft_doc::Layer> {
+pub(crate) fn plain_raster(doc: &Document) -> Option<&oracle_edit_doc::Layer> {
     match doc.layers.as_slice() {
         [layer]
-            if matches!(layer.content, photocraft_doc::LayerContent::Raster(_))
+            if matches!(layer.content, oracle_edit_doc::LayerContent::Raster(_))
                 && layer.visible
                 && layer.opacity >= 1.0
                 && layer.fill_opacity >= 1.0
@@ -393,9 +393,9 @@ pub(crate) fn plain_raster(doc: &Document) -> Option<&photocraft_doc::Layer> {
                 && layer.vector_mask.is_none()
                 && layer.effects.items.is_empty()
                 && layer.effects.psd_raw.is_none()
-                && matches!(layer.blend, photocraft_color::BlendMode::Normal | photocraft_color::BlendMode::PassThrough)
-                && photocraft_compose::channel_weights(layer, doc.mode).is_none()
-                && !photocraft_compose::blend_if_active(layer, doc.mode) =>
+                && matches!(layer.blend, oracle_edit_color::BlendMode::Normal | oracle_edit_color::BlendMode::PassThrough)
+                && oracle_edit_compose::channel_weights(layer, doc.mode).is_none()
+                && !oracle_edit_compose::blend_if_active(layer, doc.mode) =>
         {
             Some(layer)
         }
@@ -542,8 +542,8 @@ pub struct Services {
     pub automation_command: Option<AutomationCommandFn>,
     /// Same policy as [`Self::automation_command`], as a function pointer the engine calls for
     /// each step of `actions.play`. Installed on the session only while a control request or
-    /// an automation-driven [`PhotocraftApp::run`] runs, so a local play of a recorded `file.*` step still works.
-    pub automation_authorize: Option<fn(&str, &serde_json::Value) -> photocraft_engine::Result<()>>,
+    /// an automation-driven [`OracleEditApp::run`] runs, so a local play of a recorded `file.*` step still works.
+    pub automation_authorize: Option<fn(&str, &serde_json::Value) -> oracle_edit_engine::Result<()>>,
     /// Encode an RGBA8 image as PNG (used for screenshots and `ui.render`).
     pub encode_png: Option<EncodePngFn>,
     /// Open a URL in the system browser (native). Falls back to `ctx.open_url` (web) when unset.
@@ -555,7 +555,7 @@ pub struct Services {
     /// documents.
     pub inbox: Option<Inbox>,
     /// Files delivered asynchronously for a drop onto the active document's canvas (web
-    /// drag-and-drop, routed by [`PhotocraftApp::dropped_on_canvas`]): placed as layers like a
+    /// drag-and-drop, routed by [`OracleEditApp::dropped_on_canvas`]): placed as layers like a
     /// desktop canvas drop (Place Embedded, each in Free Transform).
     pub place_inbox: Option<Inbox>,
     /// OS clipboard images: copies go out, screenshots and images from other apps come in.
@@ -609,9 +609,9 @@ pub struct Services {
     /// Physical right mouse button or pen barrel button currently down.
     pub right_button_down: Option<RightButtonDownFn>,
     /// The persistent brush preset store, loading in the background (desktop; see
-    /// `photocraft_engine::preset_store`). Attached to the session once it arrives; without
+    /// `oracle_edit_engine::preset_store`). Attached to the session once it arrives; without
     /// one, brush presets are session-only unless the shell attached a store before startup.
-    pub preset_store: Option<std::sync::mpsc::Receiver<photocraft_engine::preset_store::Opened>>,
+    pub preset_store: Option<std::sync::mpsc::Receiver<oracle_edit_engine::preset_store::Opened>>,
     /// Reads the displays and their ICC profiles in the background (desktop macOS; see
     /// `monitor_status`). Without one, the canvas uses the profile chosen in Color Settings, or sRGB.
     pub read_displays: Option<monitor_status::ReadDisplaysFn>,
@@ -631,7 +631,7 @@ pub(crate) type HistJob = (DocId, u64, std::sync::mpsc::Receiver<(DocId, f64, st
 /// The Info panel's cached sample: pixel x, y, document revision and Eyedropper Sample Size.
 type InfoSampleKey = (i32, i32, u64, u32);
 
-pub struct PhotocraftApp {
+pub struct OracleEditApp {
     pub session: Session,
     pub ui: UiState,
     pub services: Services,
@@ -728,7 +728,7 @@ pub struct PhotocraftApp {
     /// Control replies waiting for queued synthetic input to be processed.
     input_waiters: Vec<Sender<ControlResponse>>,
     /// Live (uncommitted) adjustment edit shown on canvas while a slider is dragged.
-    pub live_adjust: Option<(photocraft_doc::LayerId, Value)>,
+    pub live_adjust: Option<(oracle_edit_doc::LayerId, Value)>,
     /// Frames rendered (for tests and the status bar).
     pub frame: u64,
     /// The pointer rested on the notice stack last frame. Used to give a fresh auto-hide delay in
@@ -767,17 +767,17 @@ pub struct PhotocraftApp {
     view_docs: Vec<DocId>,
     pub fps: f32,
     pub(crate) last_frame_time: f64,
-    thumbs: HashMap<(photocraft_doc::LayerId, u8), (u64, egui::TextureHandle)>,
+    thumbs: HashMap<(oracle_edit_doc::LayerId, u8), (u64, egui::TextureHandle)>,
     /// The document area each layer thumbnail in `thumbs` frames (the canvas, or the layer's
     /// bounds with Clip Thumbnails to Layer Bounds; #4281).
-    thumb_frames: HashMap<photocraft_doc::LayerId, photocraft_geom::Rect>,
+    thumb_frames: HashMap<oracle_edit_doc::LayerId, oracle_edit_geom::Rect>,
     /// History snapshot thumbnails by (document, snapshot id): a snapshot never changes, so each
     /// is made once (`snapshot_thumb`, #2966).
     snapshot_thumbs: HashMap<(DocId, u64), egui::TextureHandle>,
     /// Snapshots whose live layer/mask keys were last used to prune thumbnail handles.
     thumb_documents: Vec<(DocId, std::sync::Weak<Document>)>,
     /// Content bounds cached per (key, revision): scanning a 36 MP layer every frame cost ~77 ms.
-    bounds_cache: HashMap<u64, (u64, photocraft_geom::Rect)>,
+    bounds_cache: HashMap<u64, (u64, oracle_edit_geom::Rect)>,
     /// Downsampled proxy of the active document for live previews: (doc, revision, k, proxy).
     pub(crate) proxy: Option<(DocId, u64, u32, std::sync::Arc<Document>)>,
     /// Key of the preview currently uploaded to the GPU (doc, params hash).
@@ -789,7 +789,7 @@ pub struct PhotocraftApp {
     #[cfg(not(target_arch = "wasm32"))]
     filter_preview_worker: filter_preview_worker::Worker,
     /// Full CPU canvas redraws running in the background, by document (#4024).
-    pub(crate) redraws: std::collections::HashMap<photocraft_doc::DocId, background_redraw::Redraw>,
+    pub(crate) redraws: std::collections::HashMap<oracle_edit_doc::DocId, background_redraw::Redraw>,
     /// The last finished background redraws, for going back to a state drawn a moment ago (#6528).
     pub(crate) kept: background_redraw::KeptComposites,
     /// Select › Color Range dialog preview (proxy document + mask / image textures).
@@ -806,7 +806,7 @@ pub struct PhotocraftApp {
     /// direct control calls.
     pub(crate) automation_input: bool,
     /// Levels/Curves histogram cache: (document, adjustment layer, revision it is valid for).
-    pub(crate) tone_hist: Option<(DocId, photocraft_doc::LayerId, u64, std::sync::Arc<tone::Histograms>)>,
+    pub(crate) tone_hist: Option<(DocId, oracle_edit_doc::LayerId, u64, std::sync::Arc<tone::Histograms>)>,
     /// Histogram panel cache: (document, revision, computed at ms, histograms).
     pub(crate) doc_hist: Option<(DocId, u64, f64, std::sync::Arc<tone::Histograms>)>,
     /// The document histogram being computed on a worker thread: (document, revision, receiver).
@@ -858,9 +858,9 @@ pub struct PhotocraftApp {
     /// Pointer position over the canvas (document px), for the Info panel and status bar.
     pub(crate) hover_doc: Option<[f64; 2]>,
     /// Layer hovered in the Layers panel, outlined on the canvas.
-    pub(crate) hover_layer: Option<photocraft_doc::LayerId>,
+    pub(crate) hover_layer: Option<oracle_edit_doc::LayerId>,
     /// Layer hovered on the canvas, highlighted in the Layers panel.
-    pub(crate) canvas_hover_layer: Option<photocraft_doc::LayerId>,
+    pub(crate) canvas_hover_layer: Option<oracle_edit_doc::LayerId>,
     pub(crate) clone_preview: Option<crate::canvas::ClonePreviewCache>,
     /// Info panel sample cache: ((x, y, revision, Sample Size), composite RGBA).
     info_sample: Option<(InfoSampleKey, [f32; 4])>,
@@ -873,7 +873,7 @@ pub struct PhotocraftApp {
     /// Perspective Crop tool gesture and clicked corners (see `perspective_crop_ui`).
     pub(crate) pcrop: perspective_crop_ui::PerspectiveCrop,
     /// Type tool layout cache: ((doc, revision, layer), layout).
-    pub(crate) type_layout: Option<((u64, u64, u64), std::sync::Arc<photocraft_text::TextLayout>)>,
+    pub(crate) type_layout: Option<((u64, u64, u64), std::sync::Arc<oracle_edit_text::TextLayout>)>,
     /// Type tool: (layer, clicks in the current run) for word / line / paragraph / all selection.
     pub(crate) type_clicks: Option<(u64, u32)>,
     pub(crate) type_transform_preview: Option<type_transform::Preview>,
@@ -890,7 +890,7 @@ pub struct PhotocraftApp {
     gpu: Option<gpu_canvas::GpuCanvas>,
     /// The device the window itself draws with, and its health flag: the GPU canvas's, or one
     /// watched for the CPU canvas (see `gpu_status::check_window`).
-    window_device: Option<(eframe::wgpu::Device, photocraft_gpu::DeviceHealth)>,
+    window_device: Option<(eframe::wgpu::Device, oracle_edit_gpu::DeviceHealth)>,
     /// That device was lost: frames draw nothing and the app closes once its work is saved (#3438).
     window_lost: bool,
     /// When (in `egui::InputState::time`) to try saving unsaved work for recovery again after a
@@ -900,7 +900,7 @@ pub struct PhotocraftApp {
     started: Option<gpu_status::StartedHook>,
     /// Frame and canvas-upload timings (exposed via `ui.inspect`).
     pub perf: gpu_canvas::Perf,
-    /// Per-frame stroke timings for latency reports (`PHOTOCRAFT_STROKE_TRACE`, see `stroke_trace`).
+    /// Per-frame stroke timings for latency reports (`ORACLE_EDIT_STROKE_TRACE`, see `stroke_trace`).
     pub stroke_trace: stroke_trace::StrokeTrace,
     /// Preferences, autosave and snapping runtime state (see `prefs_ui`, `snap_ui`).
     pub(crate) prefs_rt: prefs_ui::Runtime,
@@ -912,10 +912,10 @@ pub struct PhotocraftApp {
     pub(crate) tiff_options: Option<tiff_options_ui::Prompt>,
     /// Where each document was last saved or exported to through a dialog (#1826): its next Save
     /// As or export dialog starts there rather than beside the document. Session-only.
-    pub(crate) save_dirs: HashMap<photocraft_doc::DocId, std::path::PathBuf>,
+    pub(crate) save_dirs: HashMap<oracle_edit_doc::DocId, std::path::PathBuf>,
     /// Each document's own file as it was when the document was opened from it or saved to it
     /// (see [`FileStamp`]).
-    pub(crate) disk_stamps: HashMap<photocraft_doc::DocId, (String, FileStamp)>,
+    pub(crate) disk_stamps: HashMap<oracle_edit_doc::DocId, (String, FileStamp)>,
     /// A save to an RGB Targa parked behind the Targa Options prompt (see `targa_options_ui`).
     pub(crate) targa_options: Option<targa_options_ui::Prompt>,
     /// A save to a DDS texture parked behind the DDS Options prompt (see `dds_options_ui`).
@@ -941,9 +941,12 @@ pub struct PhotocraftApp {
     pub jobs: jobs_ui::JobsUi,
     #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
     live_tokens: theme::live::LiveTokens,
+    /// The Oracle Library window (Window › Oracle Library).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub oracle_library: oracle_library_ui::InAppLibrary,
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     pub fn new(session: Session, services: Services) -> Self {
         let mut app = Self {
             session,
@@ -1090,6 +1093,8 @@ impl PhotocraftApp {
             jobs: Default::default(),
             #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
             live_tokens: theme::live::LiveTokens::from_env(),
+            #[cfg(not(target_arch = "wasm32"))]
+            oracle_library: oracle_library_ui::InAppLibrary::new("oracle-edit"),
         };
         // Saved preferences are in place before the first frame; recovery starts in upkeep.
         prefs_ui::load(&mut app);
@@ -1098,14 +1103,14 @@ impl PhotocraftApp {
         kys_import::offer_import(&mut app);
         notices::wayland_file_drop_guidance(&mut app);
         // File › Scripts › Script Events Manager: "Start Application".
-        photocraft_engine::automate_cmds::fire_event(&mut app.session, "startApplication");
+        oracle_edit_engine::automate_cmds::fire_event(&mut app.session, "startApplication");
         app
     }
 
     /// Draw the document canvas on the GPU (custom WGSL shader) instead of via egui textures.
     /// Call from the app creator with `cc.wgpu_render_state`; without it the CPU path is used.
     pub fn set_wgpu(&mut self, rs: eframe::egui_wgpu::RenderState) {
-        // Preferences › Performance › cache tile size (PHOTOCRAFT_GPU_TILE still overrides).
+        // Preferences › Performance › cache tile size (ORACLE_EDIT_GPU_TILE still overrides).
         let tile = self.session.prefs().performance.cache_tile_size;
         // Escaped driver/setup panics must leave the session and CPU canvas alive.
         self.perf.gpu_info.set_adapter(&rs.adapter.get_info());
@@ -1140,14 +1145,14 @@ impl PhotocraftApp {
     }
 
     /// The GPU canvas's device health flag (tests inject faults through it).
-    pub fn gpu_health(&self) -> Option<photocraft_gpu::DeviceHealth> {
+    pub fn gpu_health(&self) -> Option<oracle_edit_gpu::DeviceHealth> {
         self.gpu.as_ref().map(|g| g.health().clone())
     }
 
     /// Watch the device the window draws with when the GPU canvas doesn't (the CPU canvas), so
     /// its loss is handled like the GPU canvas's (see `gpu_status::check_window`).
     pub fn watch_window_device(&mut self, device: &eframe::wgpu::Device) {
-        self.window_device = Some((device.clone(), photocraft_gpu::DeviceHealth::watch(device)));
+        self.window_device = Some((device.clone(), oracle_edit_gpu::DeviceHealth::watch(device)));
     }
 
     /// Whether the window's graphics device was lost, so the app saves its documents for
@@ -1164,7 +1169,7 @@ impl PhotocraftApp {
 
     /// Run `hook` once the app has rendered its first frames (and a document opened at launch
     /// has drawn): the desktop app clears its crash-safe GPU startup marker there.
-    pub fn on_started(&mut self, hook: impl FnOnce(&mut PhotocraftApp) + 'static) {
+    pub fn on_started(&mut self, hook: impl FnOnce(&mut OracleEditApp) + 'static) {
         self.started = Some(Box::new(hook));
     }
 
@@ -1201,7 +1206,7 @@ impl PhotocraftApp {
         // ⌘2 after the mask was targeted goes back to the layer's pixels.
         if result.is_ok() && id.starts_with("channel.target") {
             if let Some(t) = self.session.active().map(|st| st.channel_view.target) {
-                use photocraft_engine::channel_cmds::ChannelTarget;
+                use oracle_edit_engine::channel_cmds::ChannelTarget;
                 self.ui.mask_target = t == ChannelTarget::LayerMask;
                 self.ui.vector_mask_target = t == ChannelTarget::VectorMask;
             }
@@ -1224,7 +1229,7 @@ impl PhotocraftApp {
         // (#5667): History reads the transform (or Place Embedded), then New Layer. Only for a
         // command that can run; a transform refused or still being applied keeps the box open and
         // the command doesn't run.
-        if photocraft_engine::PRECHECKED.contains(&id) && self.ui.transform.is_some() {
+        if oracle_edit_engine::PRECHECKED.contains(&id) && self.ui.transform.is_some() {
             // Bad params or a command that can't run leave the box as it is.
             self.session.precheck(id, &params).map_err(|e| e.to_string())?;
             transform_tool::commit(self);
@@ -1288,7 +1293,7 @@ impl PhotocraftApp {
         }
         let r = if id == "actions.play" {
             actions::play(self, &params)
-        } else if photocraft_engine::actions_cmds::shell_view_command(id) {
+        } else if oracle_edit_engine::actions_cmds::shell_view_command(id) {
             actions::run_view(self, id, params)
         } else {
             jobs_ui::run(self, id, params)
@@ -1527,14 +1532,14 @@ impl PhotocraftApp {
         // Missing fonts are read from the document itself: it may not be open yet (#4559).
         let warnings = file_open::with_missing_fonts_of(&doc, warnings);
         // A developed raw has no embedded profile to ask about.
-        let developed = warnings.iter().any(|w| w.contains(photocraft_io::raw::DEVELOPED_NOTE));
+        let developed = warnings.iter().any(|w| w.contains(oracle_edit_io::raw::DEVELOPED_NOTE));
         let question = self.session.color.open_question(&doc).filter(|_| !developed);
         let wants_raw = camera_raw_ui::wants_open_dialog(self, &warnings);
         open_prompt::arrive(
             self,
             open_prompt::Held {
                 doc,
-                read_only: photocraft_io::affinity::is_affinity(bytes),
+                read_only: oracle_edit_io::affinity::is_affinity(bytes),
                 name: name.to_string(),
                 path: path.map(str::to_string),
                 warnings: warnings.clone(),
@@ -1575,7 +1580,7 @@ impl PhotocraftApp {
         // The caller records the path it read from.
         self.session.add_document(doc, None);
         if let Some(st) = self.session.active_mut() {
-            st.source_read_only = photocraft_io::affinity::is_affinity(bytes);
+            st.source_read_only = oracle_edit_io::affinity::is_affinity(bytes);
         }
         self.sync_views();
         self.ui.status = crate::i18n::fmt(tl!("Opened {name}"), &[("name", name)]);
@@ -1622,17 +1627,17 @@ impl PhotocraftApp {
         let flat = plain_raster(&st.doc).is_some();
         let ext = st.path.as_deref().and_then(|p| std::path::Path::new(p).extension()).map(|e| e.to_string_lossy().to_ascii_lowercase());
         // An OpenRaster file only when it holds the whole document (#3806): else PSD is offered.
-        let holds_ora = st.path.as_deref().is_some_and(|p| photocraft_engine::file_cmds::holds_at(&st.doc, p));
+        let holds_ora = st.path.as_deref().is_some_and(|p| oracle_edit_engine::file_cmds::holds_at(&st.doc, p));
         let writable = ext.is_some_and(|e| {
-            matches!(e.as_str(), photocraft_format::EXTENSION | "psd" | "psb" | "tif" | "tiff")
+            matches!(e.as_str(), oracle_edit_format::EXTENSION | "psd" | "psb" | "tif" | "tiff")
                 || (e == "ora" && holds_ora)
-                || (flat && photocraft_codecs::from_extension(&e).is_some_and(|f| f.caps().write))
+                || (flat && oracle_edit_codecs::from_extension(&e).is_some_and(|f| f.caps().write))
         });
         let suggested = match &st.path {
             Some(p) if writable => p.clone(),
             p => {
                 let source = p.as_deref().unwrap_or(&st.doc.name);
-                let ext = match photocraft_engine::file_cmds::extension(source).as_deref() {
+                let ext = match oracle_edit_engine::file_cmds::extension(source).as_deref() {
                     Some("pdn") => "pcraft",
                     Some("kra" | "krz") => "ora",
                     _ => "psd",
@@ -1747,11 +1752,11 @@ impl PhotocraftApp {
             let choices = FormatChoices::from_params(params, id)?;
             let st = self.session.active().ok_or("no document")?;
             let flat_own = |p: &str| {
-                !photocraft_engine::file_cmds::saves_in_place(p)
+                !oracle_edit_engine::file_cmds::saves_in_place(p)
                     && plain_raster(&st.doc).is_some()
-                    && photocraft_engine::file_cmds::extension(p).is_some_and(|e| photocraft_codecs::from_extension(&e).is_some_and(|f| f.caps().write))
+                    && oracle_edit_engine::file_cmds::extension(p).is_some_and(|e| oracle_edit_codecs::from_extension(&e).is_some_and(|f| f.caps().write))
             };
-            let path = st.path.clone().filter(|p| photocraft_engine::file_cmds::holds_at(&st.doc, p) || flat_own(p)).ok_or(
+            let path = st.path.clone().filter(|p| oracle_edit_engine::file_cmds::holds_at(&st.doc, p) || flat_own(p)).ok_or(
                 "Save writes back only to the document's own PSD, PSB, .pcraft or OpenRaster file (OpenRaster only when it holds everything), or to its own flat file while the document is a single plain layer",
             )?;
             return self.save_in_place(path, choices);
@@ -1778,8 +1783,8 @@ impl PhotocraftApp {
     /// Photoshop's Save and Save As options start there.
     pub(crate) fn save_settings(&self) -> ExportSettings {
         let file_handling = &self.session.prefs().file_handling;
-        let previews = file_handling.image_previews != photocraft_engine::prefs::Ask::Never;
-        let maximize = file_handling.maximize_psd_compatibility != photocraft_engine::prefs::Ask::Never;
+        let previews = file_handling.image_previews != oracle_edit_engine::prefs::Ask::Never;
+        let maximize = file_handling.maximize_psd_compatibility != oracle_edit_engine::prefs::Ask::Never;
         let mut settings = ExportSettings { image_previews: previews, psd_maximize_compatibility: maximize, ..ExportSettings::default() };
         if let Some(st) = self.session.active() {
             let e = &st.doc.file_encoding;
@@ -1801,9 +1806,9 @@ impl PhotocraftApp {
         // An OpenRaster file that can't hold everything (adjustment layers, styles…) is a copy too,
         // so the editable document isn't marked saved after losing them (#3806).
         let st = self.session.active().ok_or("no document")?;
-        let tiff = |p: &str| matches!(photocraft_engine::file_cmds::extension(p).as_deref(), Some("tif" | "tiff"));
-        let holds = photocraft_engine::file_cmds::holds_at(&st.doc, path) || tiff(path);
-        let lives_layered = st.path.as_deref().is_some_and(|p| photocraft_engine::file_cmds::saves_in_place(p) || tiff(p));
+        let tiff = |p: &str| matches!(oracle_edit_engine::file_cmds::extension(p).as_deref(), Some("tif" | "tiff"));
+        let holds = oracle_edit_engine::file_cmds::holds_at(&st.doc, path) || tiff(path);
+        let lives_layered = st.path.as_deref().is_some_and(|p| oracle_edit_engine::file_cmds::saves_in_place(p) || tiff(p));
         Ok(tiff_layers == Some(false) || (!holds && (plain_raster(&st.doc).is_none() || lives_layered)))
     }
 
@@ -1858,7 +1863,7 @@ impl PhotocraftApp {
         let (hooks, arm) = match kind {
             SaveKind::User => (true, true),
             SaveKind::Automation => {
-                let holds = self.session.documents().iter().find(|st| st.doc.id == doc).is_some_and(|st| photocraft_engine::file_cmds::holds_at(&st.doc, path));
+                let holds = self.session.documents().iter().find(|st| st.doc.id == doc).is_some_and(|st| oracle_edit_engine::file_cmds::holds_at(&st.doc, path));
                 (false, holds)
             }
         };
@@ -1878,7 +1883,7 @@ impl PhotocraftApp {
                 // "Save Document" script events and File › Generate › Image Assets.
                 if hooks
                     && let Some(i) = app.session.active_index()
-                    && let Some(r) = photocraft_engine::automate_cmds::document_saved(&mut app.session, i)
+                    && let Some(r) = oracle_edit_engine::automate_cmds::document_saved(&mut app.session, i)
                 {
                     let template = "Saved {path}; image assets: {n} in {dir}";
                     app.ui.status = crate::i18n::fmt(
@@ -1904,7 +1909,7 @@ impl PhotocraftApp {
     }
 
     /// Note how `doc`'s own file at `path` looks now that the document read or wrote it.
-    pub(crate) fn remember_stamp(&mut self, doc: photocraft_doc::DocId, path: &str) {
+    pub(crate) fn remember_stamp(&mut self, doc: oracle_edit_doc::DocId, path: &str) {
         match self.services.file_stamp.as_ref().and_then(|stamp| stamp(path)) {
             Some(now) => self.disk_stamps.insert(doc, (path.to_string(), now)),
             None => self.disk_stamps.remove(&doc),
@@ -1913,7 +1918,7 @@ impl PhotocraftApp {
 
     /// Another app changed `doc`'s own file at `path` since the document was opened from it or
     /// last saved to it. A file that is gone, or one never stamped, counts as unchanged.
-    pub(crate) fn changed_on_disk(&self, doc: photocraft_doc::DocId, path: &str) -> bool {
+    pub(crate) fn changed_on_disk(&self, doc: oracle_edit_doc::DocId, path: &str) -> bool {
         let Some((own, then)) = self.disk_stamps.get(&doc) else { return false };
         own == path && self.services.file_stamp.as_ref().and_then(|stamp| stamp(path)).is_some_and(|now| now != *then)
     }
@@ -1947,7 +1952,7 @@ impl PhotocraftApp {
         let target = {
             let state = self.session.active().ok_or("no document")?;
             // As File › Save: without `path` only a layered file is written back (#416).
-            path.or_else(|| state.path.clone().filter(|p| photocraft_engine::file_cmds::holds_at(&state.doc, p))).ok_or(
+            path.or_else(|| state.path.clone().filter(|p| oracle_edit_engine::file_cmds::holds_at(&state.doc, p))).ok_or(
                 "pass `path`: a save without one writes back only to the document's own PSD, PSB, .pcraft or OpenRaster file, and to OpenRaster only when it holds everything (adjustment layers, styles and masks don't fit)",
             )?
         };
@@ -2042,7 +2047,7 @@ impl PhotocraftApp {
     }
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     /// Wait out the rest of [`Self::min_frame_ms`] since the last frame started.
     fn cap_frame_rate(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
@@ -2056,7 +2061,7 @@ impl PhotocraftApp {
     }
 }
 
-impl eframe::App for PhotocraftApp {
+impl eframe::App for OracleEditApp {
     fn on_exit(&mut self) {
         if let Err(err) = tool_memory::save_on_exit(self) {
             log::warn!("Preferences: could not save the final tool selection: {err}");
@@ -2144,11 +2149,13 @@ impl eframe::App for PhotocraftApp {
         if !dropped.is_empty() {
             let at = self.services.cursor_pos.as_mut().and_then(|f| f(ctx));
             self.open_dropped(ctx, dropped, at);
-            // Files dragged in from another app's window: PhotoCraft comes to the front and takes
+            // Files dragged in from another app's window: Oracle Edit comes to the front and takes
             // the keyboard, as Photoshop does, instead of staying behind the source (#5687).
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
         self.place_next_dropped(ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.oracle_library.ui(ctx, i18n::current().code() == "fr");
         // The control transport wakes the UI on arrival (ctx.request_repaint); only poll while a
         // screenshot is pending. (Polling every 50 ms here made idle apps render at 20 fps.)
         if !self.pending_screenshots.is_empty() {
@@ -2159,6 +2166,9 @@ impl eframe::App for PhotocraftApp {
 
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         let frame_start = gpu_canvas::now_ms();
+        // Assets dragged out of the Oracle Library window arrive as dropped files.
+        #[cfg(not(target_arch = "wasm32"))]
+        self.oracle_library.inject_drops(raw_input);
         // An undecorated window gets its caption back when the toolkit changes its flags
         // (maximize, restore, …): take it off again before the frame is laid out (#2246).
         if let Some(window_frame) = self.services.window_frame.as_mut() {
@@ -2360,8 +2370,8 @@ fn read_dropped(f: &(dyn egui::DroppedFile + Send + Sync)) -> Result<Vec<u8>, St
 /// The active layer is an adjustment layer. It has no pixels, so painting and filling it edit its
 /// mask even when its icon thumbnail, not the mask, is the Layers panel's target, as in
 /// Photoshop (#4298).
-pub(crate) fn adjustment_layer_active(st: &photocraft_engine::DocState) -> bool {
-    st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| matches!(l.content, photocraft_doc::LayerContent::Adjustment(_)))
+pub(crate) fn adjustment_layer_active(st: &oracle_edit_engine::DocState) -> bool {
+    st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| matches!(l.content, oracle_edit_doc::LayerContent::Adjustment(_)))
 }
 
 /// On the web, dropped-file bytes arrive asynchronously; the web shell handles drops itself.
@@ -2370,7 +2380,7 @@ fn read_dropped(_f: &dyn egui::DroppedFile) -> Result<Vec<u8>, String> {
     Err("drag-and-drop on the web is handled by the page; use File → Open".into())
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     /// Whether the title bar's free gap gets the drag overlay this frame: the app draws its title
     /// strip (`chrome`: not hidden by the screen mode) and a dialog's modal layer covers it. Not
     /// only with the custom title bar: on macOS the strip under the traffic lights is the window's
@@ -2384,7 +2394,7 @@ impl PhotocraftApp {
     /// ⌘I then inverts the mask, as in Photoshop (#780). A targeted alpha channel or Quick Mask
     /// mode wins, as the engine routes those itself.
     pub fn with_mask_target(&self, id: &str, params: Value) -> Value {
-        if !photocraft_engine::channel_cmds::follows_target(id) || params.get("target").is_some() || !self.layer_mask_targeted() {
+        if !oracle_edit_engine::channel_cmds::follows_target(id) || params.get("target").is_some() || !self.layer_mask_targeted() {
             return params;
         }
         match params {
@@ -2401,8 +2411,8 @@ impl PhotocraftApp {
     /// is the picture. An alpha channel or Quick Mask wins, as the engine routes those itself.
     pub fn layer_mask_targeted(&self) -> bool {
         let Some(st) = self.session.active() else { return false };
-        let layer_mask = st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::LayerMask;
-        let composite = (st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::Composite || layer_mask) && st.doc.quick_mask.is_none();
+        let layer_mask = st.channel_view.target == oracle_edit_engine::channel_cmds::ChannelTarget::LayerMask;
+        let composite = (st.channel_view.target == oracle_edit_engine::channel_cmds::ChannelTarget::Composite || layer_mask) && st.doc.quick_mask.is_none();
         let has_mask = st.active_layer.and_then(|id| st.doc.layer(id)).is_some_and(|l| l.mask.is_some());
         if !composite || !has_mask {
             return false;
@@ -2410,7 +2420,7 @@ impl PhotocraftApp {
         if self.ui.mask_target || layer_mask || adjustment_layer_active(st) {
             return true;
         }
-        let colors_off = st.channel_view.visible_colors(photocraft_engine::channel_cmds::color_count(&st.doc)) == 0;
+        let colors_off = st.channel_view.visible_colors(oracle_edit_engine::channel_cmds::color_count(&st.doc)) == 0;
         let alpha_on = (0..st.doc.channels.len()).any(|i| st.channel_view.alpha_shown(i));
         colors_off && !alpha_on
     }
@@ -2420,10 +2430,10 @@ impl PhotocraftApp {
     /// pixels brings back that target's foreground/background pair, as in Photoshop (#2166).
     pub(crate) fn sync_mask_targets(&mut self) {
         if let Some(st) = self.session.active_mut() {
-            if photocraft_engine::mask_view_cmds::current(st).is_some() || st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::LayerMask {
+            if oracle_edit_engine::mask_view_cmds::current(st).is_some() || st.channel_view.target == oracle_edit_engine::channel_cmds::ChannelTarget::LayerMask {
                 self.ui.mask_target = true;
                 self.ui.vector_mask_target = false;
-            } else if st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::VectorMask {
+            } else if st.channel_view.target == oracle_edit_engine::channel_cmds::ChannelTarget::VectorMask {
                 self.ui.vector_mask_target = true;
                 self.ui.mask_target = false;
             }
@@ -2433,8 +2443,8 @@ impl PhotocraftApp {
             if self.ui.mask_target && st.active_layer.and_then(|id| st.doc.layer(id)).is_none_or(|l| l.mask.is_none()) {
                 self.ui.mask_target = false;
             }
-            if !self.ui.mask_target && st.channel_view.target == photocraft_engine::channel_cmds::ChannelTarget::LayerMask {
-                st.channel_view.target = photocraft_engine::channel_cmds::ChannelTarget::Composite;
+            if !self.ui.mask_target && st.channel_view.target == oracle_edit_engine::channel_cmds::ChannelTarget::LayerMask {
+                st.channel_view.target = oracle_edit_engine::channel_cmds::ChannelTarget::Composite;
             }
             if !self.ui.mask_target || self.ui.properties_layer != st.active_layer.map(|l| l.0) {
                 self.ui.properties_layer = None;
@@ -2464,7 +2474,7 @@ impl PhotocraftApp {
                 if layer.vector_mask.is_some() {
                     live.insert((layer.id, mask_thumbs_ui::THUMB_VECTOR));
                 }
-                if matches!(&layer.content, photocraft_doc::LayerContent::Smart(sm) if sm.filter_mask.is_some()) {
+                if matches!(&layer.content, oracle_edit_doc::LayerContent::Smart(sm) if sm.filter_mask.is_some()) {
                     live.insert((layer.id, mask_thumbs_ui::THUMB_SMART_MASK));
                 }
                 if let Some(children) = layer.children() {
@@ -2502,7 +2512,7 @@ impl PhotocraftApp {
 
     /// Cached 64px thumbnail of a pixel-ish layer, letterboxed in a square, and the document
     /// area it frames: the canvas, or with Clip Thumbnails to Layer Bounds the layer's pixels.
-    pub fn layer_thumb(&mut self, ctx: &egui::Context, doc: &Document, layer: &photocraft_doc::Layer) -> (egui::TextureId, photocraft_geom::Rect) {
+    pub fn layer_thumb(&mut self, ctx: &egui::Context, doc: &Document, layer: &oracle_edit_doc::Layer) -> (egui::TextureId, oracle_edit_geom::Rect) {
         let clip = self.session.prefs().interface.clip_thumbnails_to_layer_bounds;
         // Key by content, not document revision: COW tiles change pointer only when their pixels
         // change, so unrelated edits (e.g. painting another layer) don't rebuild this thumbnail.
@@ -2521,7 +2531,7 @@ impl PhotocraftApp {
             let Some(s) = layer.surface() else { return [0.0; 4] };
             let n = s.channels();
             s.read_pixel(x, y, &mut px[..n]);
-            photocraft_raster::to_rgba(&s.format(), &px[..n])
+            oracle_edit_raster::to_rgba(&s.format(), &px[..n])
         });
         self.thumb_frames.insert(layer.id, frame);
         (self.store_thumb(ctx, key, rev, img), frame)
@@ -2529,12 +2539,12 @@ impl PhotocraftApp {
 
     /// The History panel thumbnail of snapshot `snap` of document `doc` (#2966): its composite,
     /// centred in a square. Thumbnails of `doc`'s snapshots not in `live` are dropped.
-    pub fn snapshot_thumb(&mut self, ctx: &egui::Context, doc: DocId, snap: &photocraft_engine::history_cmds::Snapshot, live: &[u64]) -> egui::TextureId {
+    pub fn snapshot_thumb(&mut self, ctx: &egui::Context, doc: DocId, snap: &oracle_edit_engine::history_cmds::Snapshot, live: &[u64]) -> egui::TextureId {
         self.snapshot_thumbs.retain(|(d, id), _| *d != doc || live.contains(id));
         if let Some(tex) = self.snapshot_thumbs.get(&(doc, snap.id)) {
             return tex.id();
         }
-        let comp = photocraft_compose::thumbnail(&snap.doc, 56);
+        let comp = oracle_edit_compose::thumbnail(&snap.doc, 56);
         let (w, h) = (comp.width as usize, comp.height as usize);
         let side = w.max(h);
         let (ox, oy) = ((side - w) / 2, (side - h) / 2);
@@ -2551,7 +2561,7 @@ impl PhotocraftApp {
     }
 
     /// The cached thumbnail of `mask`, the layer mask of layer `id`.
-    pub fn mask_thumb(&mut self, ctx: &egui::Context, doc: &Document, id: photocraft_doc::LayerId, mask: &photocraft_doc::LayerMask) -> egui::TextureId {
+    pub fn mask_thumb(&mut self, ctx: &egui::Context, doc: &Document, id: oracle_edit_doc::LayerId, mask: &oracle_edit_doc::LayerMask) -> egui::TextureId {
         self.mask_thumb_kind(ctx, doc, id, mask, mask_thumbs_ui::THUMB_MASK)
     }
 
@@ -2560,8 +2570,8 @@ impl PhotocraftApp {
         &mut self,
         ctx: &egui::Context,
         doc: &Document,
-        id: photocraft_doc::LayerId,
-        mask: &photocraft_doc::LayerMask,
+        id: oracle_edit_doc::LayerId,
+        mask: &oracle_edit_doc::LayerMask,
         kind: u8,
     ) -> egui::TextureId {
         let rev = surface_fingerprint(&mask.surface) ^ (doc.size.width as u64) << 40 ^ (doc.size.height as u64) << 16;
@@ -2579,7 +2589,7 @@ impl PhotocraftApp {
         self.store_thumb(ctx, key, rev, img)
     }
 
-    fn store_thumb(&mut self, ctx: &egui::Context, key: (photocraft_doc::LayerId, u8), rev: u64, img: egui::ColorImage) -> egui::TextureId {
+    fn store_thumb(&mut self, ctx: &egui::Context, key: (oracle_edit_doc::LayerId, u8), rev: u64, img: egui::ColorImage) -> egui::TextureId {
         match self.thumbs.get_mut(&key) {
             Some((r, tex)) => {
                 tex.set(img, egui::TextureOptions::LINEAR);
@@ -2599,7 +2609,7 @@ impl PhotocraftApp {
 /// Cheap identity of a surface's pixels: its default (untouched) pixel, tile coordinates and
 /// `Arc` pointers. The default pixel matters: inverting or filling a tile-less mask only changes
 /// it (#2117).
-pub fn surface_fingerprint(s: &photocraft_raster::Surface) -> u64 {
+pub fn surface_fingerprint(s: &oracle_edit_raster::Surface) -> u64 {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325 ^ s.tile_count() as u64;
     for &b in s.default_bytes() {
         h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);
@@ -2613,17 +2623,17 @@ pub fn surface_fingerprint(s: &photocraft_raster::Surface) -> u64 {
 
 /// The document area a layer thumbnail frames: the canvas, or with `clip` the layer's pixels on
 /// it (the canvas again when it has none there, so an empty layer still shows the page shape).
-fn layer_thumb_frame(layer: &photocraft_doc::Layer, canvas: photocraft_geom::Rect, clip: bool) -> photocraft_geom::Rect {
+fn layer_thumb_frame(layer: &oracle_edit_doc::Layer, canvas: oracle_edit_geom::Rect, clip: bool) -> oracle_edit_geom::Rect {
     if !clip {
         return canvas;
     }
-    let bounds = layer.surface().map_or(photocraft_geom::Rect::EMPTY, photocraft_compose::bounds::content_bounds).intersect(&canvas);
+    let bounds = layer.surface().map_or(oracle_edit_geom::Rect::EMPTY, oracle_edit_compose::bounds::content_bounds).intersect(&canvas);
     if bounds.is_empty() { canvas } else { bounds }
 }
 
 /// Square thumbnail of the document area `frame`, letterboxed, sampling `f(x, y)` in document
 /// space.
-fn thumb_image(frame: photocraft_geom::Rect, side: usize, mut f: impl FnMut(i32, i32) -> [f32; 4]) -> egui::ColorImage {
+fn thumb_image(frame: oracle_edit_geom::Rect, side: usize, mut f: impl FnMut(i32, i32) -> [f32; 4]) -> egui::ColorImage {
     let (w, h) = (frame.width().max(1) as f32, frame.height().max(1) as f32);
     let scale = w.max(h) / side as f32;
     let (ox, oy) = ((side as f32 - w / scale) / 2.0, (side as f32 - h / scale) / 2.0);
@@ -2643,7 +2653,7 @@ fn thumb_image(frame: photocraft_geom::Rect, side: usize, mut f: impl FnMut(i32,
     egui::ColorImage::new([side, side], px)
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     /// Next step of queued synthetic input (automation): events up to and including the first
     /// release, so egui sees press and release in separate frames. Hosts that don't call
     /// `raw_input_hook` (offscreen harnesses) feed these to their input themselves.
@@ -2670,7 +2680,7 @@ impl PhotocraftApp {
         theme::apply(ctx, kind);
         // Right-click in any text field: its Cut / Copy / Paste menu (text_field_menu.rs).
         ctx.add_plugin(text_field_menu::TextFieldMenu);
-        // egui's own ⌘+ / ⌘- / ⌘0 scale the whole interface; PhotoCraft zooms the canvas instead
+        // egui's own ⌘+ / ⌘- / ⌘0 scale the whole interface; Oracle Edit zooms the canvas instead
         // (shortcuts.rs), like Photoshop.
         ctx.options_mut(|o| o.zoom_with_keyboard = false);
         // ⌘/Ctrl + wheel scrolls sideways, as in Photoshop; only a pinch zooms (wheel_nav.rs).
@@ -2678,9 +2688,9 @@ impl PhotocraftApp {
     }
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     /// Cached `Surface::content_bounds` keyed by an id and the surface's tile identity.
-    pub fn cached_bounds(&mut self, key: u64, surface: &photocraft_raster::Surface) -> photocraft_geom::Rect {
+    pub fn cached_bounds(&mut self, key: u64, surface: &oracle_edit_raster::Surface) -> oracle_edit_geom::Rect {
         let rev = surface_fingerprint(surface);
         if let Some((r, b)) = self.bounds_cache.get(&key)
             && *r == rev
@@ -2698,9 +2708,9 @@ impl PhotocraftApp {
     /// The box Properties › Transform shows for `layer` (X, Y, W, H): its pixels' bounds, but a
     /// soft shape's path and stroke, whose Density and Feather render past them (#5846), as its
     /// transform frame does.
-    pub fn layer_frame_bounds(&mut self, layer: &photocraft_doc::Layer, surface: &photocraft_raster::Surface) -> photocraft_geom::Rect {
+    pub fn layer_frame_bounds(&mut self, layer: &oracle_edit_doc::Layer, surface: &oracle_edit_raster::Surface) -> oracle_edit_geom::Rect {
         match &layer.content {
-            photocraft_doc::LayerContent::Shape(sh) if sh.has_soft_mask() => {
+            oracle_edit_doc::LayerContent::Shape(sh) if sh.has_soft_mask() => {
                 // Cached per rendering, like the pixel bounds: the frame renders strips of the shape.
                 let (key, rev) = (layer.id.0 | 1 << 63, surface_fingerprint(surface));
                 if let Some((r, b)) = self.bounds_cache.get(&key)
@@ -2709,7 +2719,7 @@ impl PhotocraftApp {
                     return *b;
                 }
                 let canvas = self.session.active().map_or_else(|| surface.content_bounds(), |st| st.doc.bounds());
-                let b = photocraft_compose::soft_shape_frame(sh, surface.format(), canvas).unwrap_or(photocraft_geom::Rect::EMPTY);
+                let b = oracle_edit_compose::soft_shape_frame(sh, surface.format(), canvas).unwrap_or(oracle_edit_geom::Rect::EMPTY);
                 if self.bounds_cache.len() > 256 {
                     self.bounds_cache.clear();
                 }
@@ -2721,7 +2731,7 @@ impl PhotocraftApp {
     }
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     /// Zoom of the active document's main view: screen (device) pixels per document pixel, the
     /// user-facing factor (`100%` is `1.0`).
     pub fn current_zoom(&self) -> f32 {
@@ -2741,7 +2751,7 @@ impl PhotocraftApp {
     }
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     /// Channels panel thumbnails of the active document snapshot: the composite,
     /// each colour channel (when there is more than one), each alpha channel, then the Quick Mask.
     pub fn channel_thumbs(&mut self, ctx: &egui::Context) -> Vec<egui::TextureId> {
@@ -2768,7 +2778,7 @@ impl PhotocraftApp {
             _ => false,
         };
         if !current {
-            let comp = photocraft_compose::thumbnail(&doc, 56);
+            let comp = oracle_edit_compose::thumbnail(&doc, 56);
             let (w, h) = (comp.width as usize, comp.height as usize);
             let side = w.max(h);
             let make = |f: &dyn Fn(&[u8]) -> egui::Color32, name: &str| {
@@ -2787,11 +2797,11 @@ impl PhotocraftApp {
             let mut texs = vec![make(&|p| egui::Color32::from_rgb(p[0], p[1], p[2]), "composite")];
             if colors > 1 {
                 for k in 0..colors {
-                    let cmyk = fmt.mode == photocraft_doc::ColorMode::Cmyk;
+                    let cmyk = fmt.mode == oracle_edit_doc::ColorMode::Cmyk;
                     texs.push(make(
                         &|p| {
                             let rgba = [p[0], p[1], p[2], 255].map(|v| f32::from(v) / 255.0);
-                            let x = photocraft_raster::from_rgba(&fmt, rgba)[k];
+                            let x = oracle_edit_raster::from_rgba(&fmt, rgba)[k];
                             let g = if cmyk { 1.0 - x } else { x };
                             let byte = (g.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
                             channel_tint(fmt.mode, k, byte, show_color)
@@ -2871,7 +2881,7 @@ fn remembered_new_document_value(key: &str, v: &serde_json::Value) -> bool {
 }
 
 /// Remember the New Document fields `f` its OK used, for the next New Document.
-pub(crate) fn remember_new_document(app: &mut PhotocraftApp, f: &serde_json::Map<String, serde_json::Value>) {
+pub(crate) fn remember_new_document(app: &mut OracleEditApp, f: &serde_json::Map<String, serde_json::Value>) {
     let kept: serde_json::Map<String, serde_json::Value> =
         NEW_DOCUMENT_REMEMBERED.iter().filter_map(|k| f.get(*k).filter(|v| remembered_new_document_value(k, v)).map(|v| (k.to_string(), v.clone()))).collect();
     app.session.prefs.edit(|p| p.dialogs.insert(NEW_DOCUMENT.into(), serde_json::Value::Object(kept)));
@@ -2888,8 +2898,8 @@ fn clip_signature(w: u32, h: u32, px: &[u8]) -> u64 {
 /// A channel thumbnail pixel whose lightness is `byte` (255 = white: full light, no ink).
 /// Preferences ▸ Interface ▸ Show Channels in Color tints RGB channels from black to their
 /// primary and CMYK channels from white to their ink, as Photoshop does; otherwise grey.
-fn channel_tint(mode: photocraft_doc::ColorMode, k: usize, byte: u8, in_color: bool) -> egui::Color32 {
-    use photocraft_doc::ColorMode::{Cmyk, Rgb};
+fn channel_tint(mode: oracle_edit_doc::ColorMode, k: usize, byte: u8, in_color: bool) -> egui::Color32 {
+    use oracle_edit_doc::ColorMode::{Cmyk, Rgb};
     if !in_color {
         return egui::Color32::from_gray(byte);
     }
@@ -2904,7 +2914,7 @@ fn channel_tint(mode: photocraft_doc::ColorMode, k: usize, byte: u8, in_color: b
     }
 }
 
-impl PhotocraftApp {
+impl OracleEditApp {
     /// Mirror the session clipboard onto the OS clipboard (RGBA8).
     fn export_os_clipboard(&mut self) {
         self.clip_unmirrored = true;
@@ -2988,10 +2998,10 @@ impl PhotocraftApp {
         if self.os_clip_sig == Some(sig) && self.session.clipboard.is_some() {
             return Ok(false);
         }
-        let r = photocraft_geom::Rect::new(0, 0, w as i32, h as i32);
-        let mut surface = photocraft_raster::Surface::from_interleaved(photocraft_color::PixelFormat::RGBA8, r, &bytes);
+        let r = oracle_edit_geom::Rect::new(0, 0, w as i32, h as i32);
+        let mut surface = oracle_edit_raster::Surface::from_interleaved(oracle_edit_color::PixelFormat::RGBA8, r, &bytes);
         surface.prune();
-        self.session.clipboard = Some(photocraft_engine::edit_cmds::Clip { surface, bounds: r, layers: None, resolution: None });
+        self.session.clipboard = Some(oracle_edit_engine::edit_cmds::Clip { surface, bounds: r, layers: None, resolution: None });
         self.os_clip_sig = Some(sig);
         self.clip_external = true;
         self.clip_unmirrored = false;
@@ -3150,7 +3160,7 @@ mod clipboard_tests {
             clipboard_get_image: Some(Box::new(move || Ok(b.lock().unwrap().clone()))),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(Session::new(), services);
+        let mut app = OracleEditApp::new(Session::new(), services);
         app.session.execute("file.new", serde_json::json!({"width": 64, "height": 64})).unwrap();
         app.sync_views();
         app.run("select.rect", serde_json::json!({"x": 0, "y": 0, "width": 8, "height": 4})).unwrap();
@@ -3184,7 +3194,7 @@ mod clipboard_tests {
             })),
             ..Default::default()
         };
-        let mut app = PhotocraftApp::new(Session::new(), services);
+        let mut app = OracleEditApp::new(Session::new(), services);
         app.session.execute("prefs.set", serde_json::json!({"values": {"general.exportClipboard": false}})).unwrap();
         app.session.execute("file.new", serde_json::json!({"width": 32, "height": 32})).unwrap();
         app.sync_views();
@@ -3212,7 +3222,7 @@ mod clipboard_tests {
                 })),
                 ..Default::default()
             };
-            let mut app = PhotocraftApp::new(Session::new(), services);
+            let mut app = OracleEditApp::new(Session::new(), services);
             app.run("file.new", serde_json::json!({"width": 80, "height": 60})).unwrap();
             app.run("shape.create", serde_json::json!({"kind": "rect", "rect": [10, 10, 40, 20], "fill": "#ff0000"})).unwrap();
             app.run("edit.copy", serde_json::json!({})).unwrap();
@@ -3241,7 +3251,7 @@ mod clipboard_tests {
             busy.store(false, Ordering::SeqCst);
             app.run("edit.pasteSpecial.pasteInPlace", serde_json::json!({})).unwrap();
             let state = app.session.active().unwrap();
-            assert!(matches!(state.doc.layer(state.active_layer.unwrap()).unwrap().content, photocraft_doc::LayerContent::Shape(_)));
+            assert!(matches!(state.doc.layer(state.active_layer.unwrap()).unwrap().content, oracle_edit_doc::LayerContent::Shape(_)));
             assert!(!app.ui.status_error);
         }
     }
@@ -3261,7 +3271,7 @@ mod clipboard_tests {
                     })),
                     ..Default::default()
                 };
-                let mut app = PhotocraftApp::new(Session::new(), services);
+                let mut app = OracleEditApp::new(Session::new(), services);
                 app.session.edit_prefs(|prefs| prefs.general.export_clipboard = export);
                 app.run("file.new", serde_json::json!({"width": 80, "height": 60})).unwrap();
                 app.run("shape.create", serde_json::json!({"kind": "rect", "rect": [10, 10, 40, 20], "fill": "#ff0000"})).unwrap();
@@ -3280,7 +3290,7 @@ mod clipboard_tests {
                 } else {
                     assert_eq!(app.session.documents().len(), 2);
                     let state = app.session.active().unwrap();
-                    assert!(matches!(state.doc.layer(state.active_layer.unwrap()).unwrap().content, photocraft_doc::LayerContent::Shape(_)));
+                    assert!(matches!(state.doc.layer(state.active_layer.unwrap()).unwrap().content, oracle_edit_doc::LayerContent::Shape(_)));
                 }
                 app.run("edit.purge.clipboard", serde_json::json!({})).unwrap();
                 assert!(app.session.clipboard.is_none());
@@ -3320,7 +3330,7 @@ mod clipboard_tests {
                         })),
                         ..Default::default()
                     };
-                    let mut app = PhotocraftApp::new(Session::new(), services);
+                    let mut app = OracleEditApp::new(Session::new(), services);
                     app.run("file.new", serde_json::json!({"width": 8, "height": 8})).unwrap();
                     if imported {
                         *os.lock().unwrap() = Some((2, 2, [255u8, 0, 0, 255].repeat(4)));
@@ -3377,7 +3387,7 @@ mod clipboard_tests {
                 })),
                 ..Default::default()
             };
-            let mut app = PhotocraftApp::new(Session::new(), services);
+            let mut app = OracleEditApp::new(Session::new(), services);
             app.run("file.new", serde_json::json!({"width": 80, "height": 60})).unwrap();
             if external {
                 assert!(app.import_os_clipboard().unwrap());
@@ -3399,13 +3409,13 @@ mod clipboard_tests {
     }
 
     /// An app whose OS clipboard is `os`, counting every read in `reads`.
-    fn app_with_os_clipboard(os: &OsClip, reads: &Arc<std::sync::atomic::AtomicUsize>) -> PhotocraftApp {
+    fn app_with_os_clipboard(os: &OsClip, reads: &Arc<std::sync::atomic::AtomicUsize>) -> OracleEditApp {
         let (b, n) = (os.clone(), reads.clone());
         let get = move || {
             n.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             Ok(b.lock().unwrap().clone())
         };
-        let mut app = PhotocraftApp::new(Session::new(), Services { clipboard_get_image: Some(Box::new(get)), ..Default::default() });
+        let mut app = OracleEditApp::new(Session::new(), Services { clipboard_get_image: Some(Box::new(get)), ..Default::default() });
         app.session.execute("file.new", serde_json::json!({"width": 64, "height": 64})).unwrap();
         app.sync_views();
         app
@@ -3426,7 +3436,7 @@ mod clipboard_tests {
         assert_ne!(r["offset"], serde_json::json!([0, 0]), "external image is centred: {r}");
         assert_eq!(reads.load(std::sync::atomic::Ordering::SeqCst), 1, "one read per explicit paste");
         // Without a clipboard service Paste greys until something is copied in the app.
-        let mut plain = PhotocraftApp::new(Session::new(), Services::default());
+        let mut plain = OracleEditApp::new(Session::new(), Services::default());
         plain.session.execute("file.new", serde_json::json!({"width": 8, "height": 8})).unwrap();
         assert!(!crate::menus::is_enabled(&plain, "edit.paste"));
     }
@@ -3441,7 +3451,7 @@ mod clipboard_tests {
             n.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             Ok(b.lock().unwrap().clone())
         };
-        let mut app = PhotocraftApp::new(Session::new(), Services { clipboard_get_image: Some(Box::new(get)), ..Default::default() });
+        let mut app = OracleEditApp::new(Session::new(), Services { clipboard_get_image: Some(Box::new(get)), ..Default::default() });
         let ctx = egui::Context::default();
         // Listed right after File › New…, enabled without reading the clipboard.
         let items = crate::menus::menu_items(&app);
@@ -3486,12 +3496,12 @@ mod clipboard_tests {
         *os.lock().unwrap() = Some((4, 4, [255u8, 0, 0, 255].repeat(16)));
         let (b, n) = (os.clone(), reads.clone());
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1200.0, 800.0)).with_max_steps(64).build_eframe(move |cc| {
-            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            OracleEditApp::setup_context(&cc.egui_ctx, Default::default());
             let get = move || {
                 n.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 Ok(b.lock().unwrap().clone())
             };
-            let mut app = PhotocraftApp::new(Session::new(), Services { clipboard_get_image: Some(Box::new(get)), ..Default::default() });
+            let mut app = OracleEditApp::new(Session::new(), Services { clipboard_get_image: Some(Box::new(get)), ..Default::default() });
             app.session.execute("file.new", serde_json::json!({"width": 64, "height": 64})).unwrap();
             app
         });
@@ -3561,12 +3571,12 @@ mod clipboard_tests {
         const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
         const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-        let mut app = PhotocraftApp::new(Session::new(), Services::default());
+        let mut app = OracleEditApp::new(Session::new(), Services::default());
         app.run("file.new", json!({"width": 32, "height": 32})).unwrap();
         let masked = app.run("layer.new.layer", json!({})).unwrap()["layer"].clone();
         app.run("tools.setColors", json!({"foreground": "#ff0000", "background": "#0000ff"})).unwrap();
-        let pair = |app: &PhotocraftApp| (app.session.tools.foreground, app.session.tools.background);
-        let target = |app: &mut PhotocraftApp, mask: bool| {
+        let pair = |app: &OracleEditApp| (app.session.tools.foreground, app.session.tools.background);
+        let target = |app: &mut OracleEditApp, mask: bool| {
             app.ui.mask_target = mask;
             app.sync_views();
         };
@@ -3599,7 +3609,7 @@ mod clipboard_tests {
 mod channel_tint_tests {
     use super::channel_tint;
     use egui::Color32;
-    use photocraft_doc::ColorMode::{Cmyk, Grayscale, Rgb};
+    use oracle_edit_doc::ColorMode::{Cmyk, Grayscale, Rgb};
 
     #[test]
     fn channels_in_color_tint_rgb_from_black_and_cmyk_inks_from_white() {

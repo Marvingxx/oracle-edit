@@ -5,9 +5,9 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
 };
 
-use photocraft_automation::{AuthorizedWorkspace, Headless, workspace::authorize_desktop_engine_step};
-use photocraft_doc::{Document, LayerContent, LayerId};
-use photocraft_engine::{Session, actions_cmds::Action, jobs::Started, smart_cmds};
+use oracle_edit_automation::{AuthorizedWorkspace, Headless, workspace::authorize_desktop_engine_step};
+use oracle_edit_doc::{Document, LayerContent, LayerId};
+use oracle_edit_engine::{Session, actions_cmds::Action, jobs::Started, smart_cmds};
 use serde_json::{Value, json};
 
 struct Fixture(PathBuf);
@@ -56,7 +56,7 @@ impl Fixture {
         let mut doc = (*h.session.active().unwrap().doc).clone();
         let LayerContent::Smart(sm) = &mut doc.layer_mut(layer).unwrap().content else { panic!("smart object") };
         sm.smart_filters[0].params = path_params(lookup, &self.outside(if lookup { "white.cube" } else { "white.png" }));
-        let bytes = photocraft_format::save_to_bytes(&doc, &Default::default()).unwrap();
+        let bytes = oracle_edit_format::save_to_bytes(&doc, &Default::default()).unwrap();
         std::fs::write(self.root().join("stored.pcraft"), bytes).unwrap();
         (doc, layer)
     }
@@ -74,8 +74,8 @@ fn png(value: impl Fn(u32) -> u8) -> Vec<u8> {
             pixels.extend([value(x); 3]);
         }
     }
-    let image = photocraft_codecs::Image::from_u8(32, 32, photocraft_codecs::ChannelLayout::Rgb, pixels).unwrap();
-    photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).unwrap()
+    let image = oracle_edit_codecs::Image::from_u8(32, 32, oracle_edit_codecs::ChannelLayout::Rgb, pixels).unwrap();
+    oracle_edit_codecs::encode(&image, oracle_edit_codecs::Format::Png, &Default::default()).unwrap()
 }
 fn cube(value: u8) -> String {
     format!("LUT_3D_SIZE 2\n{}", format!("{value} {value} {value}\n").repeat(8))
@@ -271,7 +271,7 @@ fn a_new_displace_map_outside_the_workspace_is_refused_before_it_is_read() {
         sm.smart_filters[0].params.clone()
     };
     let before = params(&h);
-    let map = photocraft_io::smart_map::displace_embedded_map(&before).expect("the open document's map, embedded");
+    let map = oracle_edit_io::smart_map::displace_embedded_map(&before).expect("the open document's map, embedded");
     assert!(map.data.iter().all(|v| *v < 0.9), "the grey map");
     let doc = h.session.active().unwrap().doc.clone();
     let edit = json!({"layer": layer.0, "params": {"mapPath": f.outside("white.png")}});

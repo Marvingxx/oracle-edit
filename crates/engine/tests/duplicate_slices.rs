@@ -1,5 +1,5 @@
-use photocraft_doc::SliceOrigin;
-use photocraft_engine::Session;
+use oracle_edit_doc::SliceOrigin;
+use oracle_edit_engine::Session;
 use serde_json::{Value, json};
 
 fn sliced() -> Session {

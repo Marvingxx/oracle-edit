@@ -5,10 +5,10 @@
 
 use std::sync::{Mutex, PoisonError};
 
-use photocraft_color::PixelFormat;
-use photocraft_doc::{SmartFilter, SmartObject};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use oracle_edit_color::PixelFormat;
+use oracle_edit_doc::{SmartFilter, SmartObject};
+use oracle_edit_geom::Rect;
+use oracle_edit_raster::Surface;
 
 /// blake3 of a stage's inputs: the source contents, the placement and the filters so far.
 pub(super) type StageKey = [u8; 32];

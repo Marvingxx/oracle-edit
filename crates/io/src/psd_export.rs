@@ -1,14 +1,14 @@
 //! [`Document`] → PSD/PSB.
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, Layer, LayerContent, LayerMask, SmartContentsId};
-use photocraft_psd::file::{GlobalLayerMask, LayerInfoPlacement};
-use photocraft_psd::layer::{BlendingRanges, ChannelData, LayerFlags, LayerInfo, LayerMask as PsdMask, MaskData, MaskParameters};
-use photocraft_psd::resources::{ImageResource, ResolutionInfo, ids, version_info_resource};
-use photocraft_psd::{
+use oracle_edit_color::{ColorMode, PixelFormat, SampleType};
+use oracle_edit_doc::{Document, Layer, LayerContent, LayerMask, SmartContentsId};
+use oracle_edit_psd::file::{GlobalLayerMask, LayerInfoPlacement};
+use oracle_edit_psd::layer::{BlendingRanges, ChannelData, LayerFlags, LayerInfo, LayerMask as PsdMask, MaskData, MaskParameters};
+use oracle_edit_psd::resources::{ImageResource, ResolutionInfo, ids, version_info_resource};
+use oracle_edit_psd::{
     BlendMode as PsdBlend, ColorMode as PsdMode, Compression, Header, ImageData, LayerRecord, PsdFile, Rect as PsdRect, SectionType, TaggedBlock, Version,
 };
-use photocraft_raster::{Interrupt, Surface};
+use oracle_edit_raster::{Interrupt, Surface};
 
 use crate::adjust_map;
 use crate::blocks;
@@ -72,7 +72,7 @@ struct Ex {
     /// The document's own file, which linked smart objects are resolved against.
     document: Option<std::path::PathBuf>,
     /// Character/paragraph styles written into every type layer's engine data.
-    text_styles: photocraft_doc::TextStyles,
+    text_styles: oracle_edit_doc::TextStyles,
     mask_fmt: PixelFormat,
     cc: usize,
     cmyk: bool,
@@ -81,24 +81,24 @@ struct Ex {
     /// Reserved imported layer and generated divider IDs.
     used_ids: std::collections::HashSet<u32>,
     /// PSD ids assigned to document layers (kept from `psd_id` when unique).
-    layer_ids: std::collections::HashMap<photocraft_doc::LayerId, u32>,
+    layer_ids: std::collections::HashMap<oracle_edit_doc::LayerId, u32>,
     /// The generated `Txt2` object number of each type layer (a preserved `TySh` keeps its own
-    /// `TextIndex`, others get the next free number; see `photocraft_text::psd::build_txt2`),
+    /// `TextIndex`, others get the next free number; see `oracle_edit_text::psd::build_txt2`),
     /// written into the `TySh` data this export re-serializes.
-    text_index: std::collections::HashMap<photocraft_doc::LayerId, i32>,
-    canvas: photocraft_geom::Rect,
+    text_index: std::collections::HashMap<oracle_edit_doc::LayerId, i32>,
+    canvas: oracle_edit_geom::Rect,
     records: Vec<LayerRecord>,
     warnings: Vec<String>,
     /// Guides (artboard blocks list the guides inside each board).
-    guides: photocraft_doc::Guides,
+    guides: oracle_edit_doc::Guides,
     /// Layer comps to regenerate into each layer's `cmls`; None = preserved data still matches.
-    comps: Option<(Vec<photocraft_doc::LayerComp>, Option<photocraft_doc::LayerComp>)>,
+    comps: Option<(Vec<oracle_edit_doc::LayerComp>, Option<oracle_edit_doc::LayerComp>)>,
     /// Smart objects: embedded files and filter caches for the global blocks.
     smart: SmartOut,
     /// The document's patterns, which Pattern Fill layers are rendered from.
-    patterns: Vec<photocraft_doc::Pattern>,
+    patterns: Vec<oracle_edit_doc::Pattern>,
     /// The layer written as Photoshop's Background (see [`psd_background`]).
-    background: Option<photocraft_doc::LayerId>,
+    background: Option<oracle_edit_doc::LayerId>,
 }
 
 /// The layer Photoshop should open as its Background: the bottom top-level layer when it is a
@@ -107,12 +107,12 @@ struct Ex {
 /// Background by the bottom layer having no transparency channel (measured on Photoshop 27.11:
 /// with the `-1` channel written, 317 of 427 re-exported corpus files reopened with the
 /// Background as an ordinary layer).
-fn psd_background(doc: &Document) -> Option<photocraft_doc::LayerId> {
+fn psd_background(doc: &Document) -> Option<oracle_edit_doc::LayerId> {
     let l = doc.layers.first()?;
     let LayerContent::Raster(s) = &l.content else { return None };
     let locked = l.locks.transparency && l.locks.position;
     let plain = !l.clipped && l.mask.is_none() && l.vector_mask.is_none() && l.opacity >= 1.0 && l.fill_opacity >= 1.0;
-    let normal = l.blend == photocraft_doc::BlendMode::Normal;
+    let normal = l.blend == oracle_edit_doc::BlendMode::Normal;
     if !(locked && plain && normal) {
         return None;
     }
@@ -149,7 +149,7 @@ struct SmartOut {
     /// Nesting depth of this export (embedded documents are exported recursively).
     depth: u32,
     /// The document's preserved global blocks (embedded files and filter caches from PSD import).
-    globals: Vec<photocraft_doc::PsdGlobalBlock>,
+    globals: Vec<oracle_edit_doc::PsdGlobalBlock>,
     /// uuids of the files in the preserved linked-layer blocks.
     known: std::collections::HashSet<String>,
     /// uuids the layers reference.
@@ -163,36 +163,36 @@ struct SmartOut {
     /// Each placed layer has its own id, even when it duplicates an imported layer.
     placed_used: std::collections::HashSet<String>,
     /// Original instances reserve their imported placement regardless of layer order.
-    placed_owners: std::collections::HashMap<String, photocraft_doc::LayerId>,
+    placed_owners: std::collections::HashMap<String, oracle_edit_doc::LayerId>,
     /// Legacy records without a placed id stay unchanged for the original instance.
-    unplaced_owners: std::collections::HashMap<SmartContentsId, photocraft_doc::LayerId>,
+    unplaced_owners: std::collections::HashMap<SmartContentsId, oracle_edit_doc::LayerId>,
     /// The imported identity that keeps each original linked UUID.
     linked_contents: std::collections::HashMap<String, SmartContentsId>,
     /// Independent copies of preserved linked items, including unavailable external sources.
-    linked_copies: std::collections::BTreeMap<(String, SmartContentsId), photocraft_doc::PsdGlobalBlock>,
+    linked_copies: std::collections::BTreeMap<(String, SmartContentsId), oracle_edit_doc::PsdGlobalBlock>,
     /// Embedded documents decoded while converting them, by uuid (for the filter caches).
     docs: std::collections::HashMap<String, Document>,
     /// Source composites (document pixel format, source space) by uuid; `None` = unreadable.
-    composites: std::collections::HashMap<String, Option<(std::sync::Arc<Surface>, photocraft_geom::Rect)>>,
+    composites: std::collections::HashMap<String, Option<(std::sync::Arc<Surface>, oracle_edit_geom::Rect)>>,
     /// Preserved `FEid` items (by placed id).
-    old_fx: Vec<photocraft_psd::filter_effects::FilterEffectsItem>,
+    old_fx: Vec<oracle_edit_psd::filter_effects::FilterEffectsItem>,
     /// Placed ids whose preserved `FEid` item stays.
     keep_fx: std::collections::HashSet<String>,
     /// Regenerated `FEid` items.
-    new_fx: Vec<photocraft_psd::filter_effects::FilterEffectsItem>,
+    new_fx: Vec<oracle_edit_psd::filter_effects::FilterEffectsItem>,
     /// The unfiltered pixels of each smart object whose filter mask shows: its layer record holds
     /// the filtered pixels without the mask, as Photoshop's do (`compose::filter_mask`).
-    unfiltered: std::collections::HashMap<photocraft_doc::LayerId, Surface>,
+    unfiltered: std::collections::HashMap<oracle_edit_doc::LayerId, Surface>,
 }
 
 /// Whether a smart object's filter mask shows: enabled over at least one visible, enabled filter.
-fn masked(sm: &photocraft_doc::SmartObject) -> bool {
+fn masked(sm: &oracle_edit_doc::SmartObject) -> bool {
     sm.filter_mask.as_ref().is_some_and(|m| m.enabled) && sm.filters_enabled && sm.smart_filters.iter().any(|f| f.visible)
 }
 
 /// `FEid` data padded to 4 bytes inside the block length: Photoshop counts the padding in the
 /// length and can't open a file whose `FEid` is padded outside it.
-fn padded_fx(fx: &photocraft_psd::filter_effects::FilterEffects) -> Vec<u8> {
+fn padded_fx(fx: &oracle_edit_psd::filter_effects::FilterEffects) -> Vec<u8> {
     let mut d = fx.to_bytes();
     d.resize(d.len().next_multiple_of(4), 0);
     d
@@ -208,7 +208,7 @@ impl SmartOut {
         let old_fx = globals
             .iter()
             .filter(|(_, k, _)| FX_KEYS.contains(&k))
-            .filter_map(|(_, _, d)| photocraft_psd::filter_effects::FilterEffects::parse(d).ok())
+            .filter_map(|(_, _, d)| oracle_edit_psd::filter_effects::FilterEffects::parse(d).ok())
             .flat_map(|fx| fx.items)
             .collect();
         let mut linked_contents = std::collections::HashMap::new();
@@ -219,7 +219,7 @@ impl SmartOut {
         layers.sort_by_key(|(_, _, layer)| (layer.psd_id.is_none(), layer.id));
         for (_, _, layer) in layers {
             if let LayerContent::Smart(sm) = &layer.content
-                && let photocraft_doc::SmartSource::Linked { path } = &sm.source
+                && let oracle_edit_doc::SmartSource::Linked { path } = &sm.source
                 && let Some(placed) = sm.psd_raw.as_ref().and_then(|d| crate::smart_map::parse_sold(d))
                 && placed.idnt == *path
             {
@@ -237,7 +237,7 @@ impl SmartOut {
     /// The document's global blocks with the linked-layer files and filter caches brought up to
     /// date: unreferenced files dropped (when every reference is known), new files appended,
     /// filter caches kept or regenerated per smart object. Unchanged blocks stay byte-identical.
-    fn finish(&self, blocks: Vec<photocraft_doc::PsdGlobalBlock>) -> Vec<photocraft_doc::PsdGlobalBlock> {
+    fn finish(&self, blocks: Vec<oracle_edit_doc::PsdGlobalBlock>) -> Vec<oracle_edit_doc::PsdGlobalBlock> {
         use std::sync::Arc;
         let keep = |u: &str| !self.prune_ok || self.used.contains(u);
         let mut out = Vec::with_capacity(blocks.len() + 2);
@@ -253,7 +253,7 @@ impl SmartOut {
                     Some(d) => out.push((sig, key, Arc::new(d))),
                 }
             } else if FX_KEYS.contains(&&key) {
-                let Ok(mut fx) = photocraft_psd::filter_effects::FilterEffects::parse(&data) else {
+                let Ok(mut fx) = oracle_edit_psd::filter_effects::FilterEffects::parse(&data) else {
                     out.push((sig, key, data));
                     continue;
                 };
@@ -285,7 +285,7 @@ impl SmartOut {
             }
         }
         if !fx_placed && !self.new_fx.is_empty() {
-            let fx = photocraft_psd::filter_effects::FilterEffects { version: 3, items: self.new_fx.clone() };
+            let fx = oracle_edit_psd::filter_effects::FilterEffects { version: 3, items: self.new_fx.clone() };
             out.push((*b"8BIM", *b"FEid", Arc::new(padded_fx(&fx))));
             if !out.iter().any(|(_, k, _)| k == b"FMsk") {
                 // Filter mask overlay: RGB red at 50 %, Photoshop's default.
@@ -298,7 +298,7 @@ impl SmartOut {
 
 /// The source size of a smart object whose file we can't decode: its rendered bounds taken back
 /// through the inverse transform (the source's top-left is the origin).
-fn size_from_layer(sm: &photocraft_doc::SmartObject) -> (f64, f64) {
+fn size_from_layer(sm: &oracle_edit_doc::SmartObject) -> (f64, f64) {
     let r = sm.cache.as_ref().map(Surface::content_bounds).filter(|r| !r.is_empty());
     let (Some(r), Some(inv)) = (r, sm.transform.inverse()) else { return (1.0, 1.0) };
     let [a, b, c, d, e, f] = inv.m;
@@ -322,7 +322,7 @@ fn upsert(raw: &mut Vec<([u8; 4], Vec<u8>)>, key: &[u8; 4], data: Vec<u8>, befor
     }
 }
 
-fn h_of(r: photocraft_geom::Rect) -> usize {
+fn h_of(r: oracle_edit_geom::Rect) -> usize {
     r.height() as usize
 }
 
@@ -335,7 +335,7 @@ fn psd_mode(m: ColorMode) -> PsdMode {
     }
 }
 
-fn to_psd_rect(r: photocraft_geom::Rect) -> PsdRect {
+fn to_psd_rect(r: oracle_edit_geom::Rect) -> PsdRect {
     PsdRect { top: r.y0, left: r.x0, bottom: r.y1, right: r.x1 }
 }
 
@@ -380,7 +380,7 @@ impl Ex {
         let row_len = r.width() as usize;
         let bands = crate::pixels::bands(h_of(r));
         let parts =
-            crate::pixels::par_map(bands, |rows| s.to_interleaved(photocraft_geom::Rect::new(r.x0, r.y0 + rows.start as i32, r.x1, r.y0 + rows.end as i32)));
+            crate::pixels::par_map(bands, |rows| s.to_interleaved(oracle_edit_geom::Rect::new(r.x0, r.y0 + rows.start as i32, r.x1, r.y0 + rows.end as i32)));
         let mut bytes = Vec::with_capacity(row_len * h_of(r) * s.format().bytes_per_pixel());
         for part in parts {
             bytes.extend_from_slice(&part);
@@ -493,7 +493,7 @@ impl Ex {
         if lspf != 0 {
             blocks.push(TaggedBlock::protection(lspf));
         }
-        if l.label != photocraft_doc::LabelColor::None {
+        if l.label != oracle_edit_doc::LabelColor::None {
             blocks.push(TaggedBlock::sheet_color(blocks::label_index(l.label)));
         }
         blocks.push(TaggedBlock::fill_opacity(q255(l.fill_opacity)));
@@ -501,7 +501,7 @@ impl Ex {
         // could not be decoded at all); otherwise regenerated.
         let fx = &l.effects;
         for effect in &fx.items {
-            use photocraft_doc::effects::Effect;
+            use oracle_edit_doc::effects::Effect;
             let modes = match effect {
                 Effect::DropShadow(s) | Effect::InnerShadow(s) => [Some(s.common.blend), None],
                 Effect::OuterGlow(g) | Effect::InnerGlow(g) => [Some(g.common.blend), None],
@@ -584,7 +584,7 @@ impl Ex {
                 None => raw.push((*keys[0], d.to_vec())),
             }
         };
-        let fill_rule = |raw: &mut Vec<([u8; 4], Vec<u8>)>, regenerated: &mut Vec<([u8; 4], Vec<u8>)>, f: &photocraft_doc::Fill| {
+        let fill_rule = |raw: &mut Vec<([u8; 4], Vec<u8>)>, regenerated: &mut Vec<([u8; 4], Vec<u8>)>, f: &oracle_edit_doc::Fill| {
             let keep = raw.iter().any(|(k, d)| matches!(k, b"SoCo" | b"GdFl" | b"PtFl") && blocks::parse_fill(k, d).as_ref() == Some(f));
             if !keep {
                 raw.retain(|(k, _)| !matches!(k, b"SoCo" | b"GdFl" | b"PtFl"));
@@ -607,31 +607,31 @@ impl Ex {
                 };
                 let cged = raw.iter().find(|(k, _)| k == b"CgEd").map(|(_, d)| d.clone());
                 let keep = raw.iter().any(|(k, d)| {
-                    // A previously saved PhotoCraft v2 Photo Filter block may be 18 bytes.
+                    // A previously saved Oracle Edit v2 Photo Filter block may be 18 bytes.
                     // It parses here, but Photoshop requires four-byte alignment, so repair
                     // that legacy record on re-save rather than preserving the broken bytes.
                     let legacy_phfl = k == b"phfl" && d.starts_with(&[0, 2]) && d.len() % 4 != 0;
-                    // Older PhotoCraft builds wrote `grdm` 2 bytes short of four-byte alignment,
+                    // Older Oracle Edit builds wrote `grdm` 2 bytes short of four-byte alignment,
                     // which makes Photoshop refuse the file (#8070): regenerate it too.
-                    let legacy_grdm = k == b"grdm" && adjust_map::is_unpadded_photocraft_gradient_map(d);
+                    let legacy_grdm = k == b"grdm" && adjust_map::is_unpadded_oracle_edit_gradient_map(d);
                     !legacy_phfl && !legacy_grdm && adjust_map::ADJUSTMENT_KEYS.contains(&k) && adjust_map::parse(k, d, cged.as_deref(), channels) == *a
                 });
                 // A Gradient Map whose stops are unchanged keeps the file's own block (stops in
                 // the document's CMYK/Lab/Gray space, smoothness, method) with Reverse and Dither
                 // updated in place.
                 let keep = keep
-                    || (matches!(a, photocraft_doc::Adjustment::GradientMap { .. })
+                    || (matches!(a, oracle_edit_doc::Adjustment::GradientMap { .. })
                         && raw.iter_mut().any(|(k, d)| {
-                            k == b"grdm" && !adjust_map::is_unpadded_photocraft_gradient_map(d) && adjust_map::retarget_gradient_map(d, a, channels)
+                            k == b"grdm" && !adjust_map::is_unpadded_oracle_edit_gradient_map(d) && adjust_map::retarget_gradient_map(d, a, channels)
                         }));
                 // An adjustment type no mapper knows (#6575) is its block: kept verbatim, and
                 // never written a second time beside a stale copy.
                 let own = match a {
-                    photocraft_doc::Adjustment::Unsupported { psd_key, .. } => Some(psd_key.as_bytes()),
+                    oracle_edit_doc::Adjustment::Unsupported { psd_key, .. } => Some(psd_key.as_bytes()),
                     _ => None,
                 };
                 let keep =
-                    keep || matches!(a, photocraft_doc::Adjustment::Unsupported { raw: r, .. } if raw.iter().any(|(k, d)| own == Some(&k[..]) && d == r));
+                    keep || matches!(a, oracle_edit_doc::Adjustment::Unsupported { raw: r, .. } if raw.iter().any(|(k, d)| own == Some(&k[..]) && d == r));
                 if !keep {
                     raw.retain(|(k, _)| !adjust_map::ADJUSTMENT_KEYS.contains(&k) && k != b"CgEd" && own != Some(&k[..]));
                     let w = adjust_map::write(a);
@@ -640,7 +640,7 @@ impl Ex {
                     }
                     // Photoshop's `clrL` descriptor has no interpolation setting, so the
                     // reopened layer renders trilinear.
-                    if matches!(a, photocraft_doc::Adjustment::ColorLookup { tetrahedral: true, .. }) {
+                    if matches!(a, oracle_edit_doc::Adjustment::ColorLookup { tetrahedral: true, .. }) {
                         self.warnings.push(format!(
                             "layer \"{}\": Color Lookup tetrahedral interpolation is saved as trilinear (PSD has no interpolation setting)",
                             l.name
@@ -659,7 +659,7 @@ impl Ex {
             }
             LayerContent::Text(t) => {
                 // Text layers without PSD data (created here) get a generated TySh.
-                let generated = t.psd_raw.is_none().then(|| std::sync::Arc::new(photocraft_text::psd::build_tysh(t, self.dpi, None)));
+                let generated = t.psd_raw.is_none().then(|| std::sync::Arc::new(oracle_edit_text::psd::build_tysh(t, self.dpi, None)));
                 let src = t.psd_raw.as_ref().or(generated.as_ref());
                 // Character/paragraph style sheets from the document's styles.
                 let styled = src.and_then(|d| crate::text_styles_map::export_tysh(d, t, &self.text_styles, self.dpi)).map(std::sync::Arc::new);
@@ -670,8 +670,8 @@ impl Ex {
                 // however, even when no style sheet needed rebuilding: otherwise two
                 // layers may read the same Txt2 object and acquire the wrong kerning.
                 let idx = self.text_index.get(&l.id).copied().unwrap_or(0);
-                let rewrite = styled.as_ref().or(generated.as_ref()).or_else(|| src.filter(|d| photocraft_text::psd::text_index(d.as_slice()) != Some(idx)));
-                let fresh = rewrite.and_then(|d| photocraft_text::psd::set_text_index(d.as_slice(), idx)).map(std::sync::Arc::new);
+                let rewrite = styled.as_ref().or(generated.as_ref()).or_else(|| src.filter(|d| oracle_edit_text::psd::text_index(d.as_slice()) != Some(idx)));
+                let fresh = rewrite.and_then(|d| oracle_edit_text::psd::set_text_index(d.as_slice(), idx)).map(std::sync::Arc::new);
                 set_principal(&mut raw, &[b"TySh"], fresh.as_ref().or(styled.as_ref().or(src)));
                 if !raw.iter().any(|(k, _)| k == b"TySh") {
                     self.warnings.push(format!("layer \"{}\": text layer written as pixels (no TySh data)", l.name));
@@ -756,7 +756,7 @@ impl Ex {
     /// filter cache (`FEid`). An imported placed layer that nothing changed is written verbatim;
     /// otherwise the blocks are regenerated (from the imported descriptor where the source is
     /// the same). Without a source that can be embedded the layer is written as pixels.
-    fn smart_blocks(&mut self, l: &Layer, sm: &photocraft_doc::SmartObject, template: Option<crate::smart_map::Placed>, raw: &mut Vec<([u8; 4], Vec<u8>)>) {
+    fn smart_blocks(&mut self, l: &Layer, sm: &oracle_edit_doc::SmartObject, template: Option<crate::smart_map::Placed>, raw: &mut Vec<([u8; 4], Vec<u8>)>) {
         use crate::smart_map::{FilterStack, PlacedSpec, filter_fx, plld_bytes, sold_bytes, uuid_from};
         let src = match self.smart_source(sm, template.as_ref()) {
             Ok(s) => s,
@@ -837,9 +837,9 @@ impl Ex {
                 (None, Some((img, img_bounds))) => {
                     let unfiltered = match &sm.perspective {
                         Some(p) => {
-                            photocraft_algo::warp::place_source_projective(&img, img_bounds, &photocraft_algo::transform::Homography(*p), sm.warp.as_ref())
+                            oracle_edit_algo::warp::place_source_projective(&img, img_bounds, &oracle_edit_algo::transform::Homography(*p), sm.warp.as_ref())
                         }
-                        None => photocraft_algo::warp::place_source(&img, img_bounds, &sm.transform, sm.warp.as_ref()),
+                        None => oracle_edit_algo::warp::place_source(&img, img_bounds, &sm.transform, sm.warp.as_ref()),
                     };
                     match unfiltered {
                         Ok(unfiltered) => {
@@ -873,7 +873,7 @@ impl Ex {
     /// moved, transformed, warped, filtered or given other contents. `false` for a record that
     /// can't be read (or whose warp can't), or whose file isn't embedded: its contents were never
     /// available, so it is kept.
-    fn plld_edited(&self, sm: &photocraft_doc::SmartObject) -> bool {
+    fn plld_edited(&self, sm: &oracle_edit_doc::SmartObject) -> bool {
         let Some(data) = sm.psd_raw.as_deref() else { return false };
         let Some((id, corners)) = blocks::parse_plld(data) else { return false };
         // Without its embedded file the contents were never available: keep the record as it
@@ -886,7 +886,7 @@ impl Ex {
             blocks::PlldWarp::None => None,
             blocks::PlldWarp::Warp(w) => Some(w),
         };
-        if sm.source != (photocraft_doc::SmartSource::Linked { path: id.clone() })
+        if sm.source != (oracle_edit_doc::SmartSource::Linked { path: id.clone() })
             || sm.warp != warp
             || !sm.smart_filters.is_empty()
             || sm.filter_mask.is_some()
@@ -895,13 +895,13 @@ impl Ex {
         }
         // Placed as the importer places it (the same source size, from the same file, and the
         // same frame: a custom warp's control-point box, #3677).
-        let size = crate::linked::source_size_in_blocks(self.smart.globals.iter().map(|(_, k, d)| (k, d.as_slice())), &id, &photocraft_raster::Interrupt::NONE);
+        let size = crate::linked::source_size_in_blocks(self.smart.globals.iter().map(|(_, k, d)| (k, d.as_slice())), &id, &oracle_edit_raster::Interrupt::NONE);
         blocks::plld_transform(&corners, size, warp.as_ref()) != (sm.transform, sm.perspective)
     }
 
     /// Whether an imported placed layer still says what the smart object is: transform, warp,
     /// filter stack and filter mask as stored.
-    fn placed_unchanged(&self, t: &crate::smart_map::Placed, data: &[u8], sm: &photocraft_doc::SmartObject, stack: &crate::smart_map::FilterStack) -> bool {
+    fn placed_unchanged(&self, t: &crate::smart_map::Placed, data: &[u8], sm: &oracle_edit_doc::SmartObject, stack: &crate::smart_map::FilterStack) -> bool {
         if t.transform != sm.transform || blocks::parse_placed_warp(b"SoLd", data) != sm.warp || t.stack.clone().unwrap_or_default() != *stack {
             return false;
         }
@@ -920,17 +920,17 @@ impl Ex {
     /// The `lnk2` file a smart object's source is written as: a preserved embedded file, or a new
     /// one (a `.pcraft` source becomes a PSB of the nested document; image files are embedded as
     /// they are; a linked file is read and embedded).
-    fn smart_source(&mut self, sm: &photocraft_doc::SmartObject, template: Option<&crate::smart_map::Placed>) -> Result<Source, String> {
-        use photocraft_doc::SmartSource;
+    fn smart_source(&mut self, sm: &oracle_edit_doc::SmartObject, template: Option<&crate::smart_map::Placed>) -> Result<Source, String> {
+        use oracle_edit_doc::SmartSource;
         match &sm.source {
             // A file of the imported document, or one its placed-layer data names (a missing
             // link stays a smart object, as in Photoshop).
             SmartSource::Linked { path } if self.smart.known.contains(path) || template.is_some_and(|t| t.idnt == *path) => {
                 let stored = template.filter(|t| t.idnt == *path).and_then(|t| crate::smart_map::stored_size(&t.descriptor));
                 let geometry = stored.map(|size| (size, f64::from(self.dpi))).or_else(|| {
-                    let meta = photocraft_doc::Metadata { psd_global_blocks: self.smart.globals.clone(), ..Default::default() };
+                    let meta = oracle_edit_doc::Metadata { psd_global_blocks: self.smart.globals.clone(), ..Default::default() };
                     let f = crate::linked::find_linked_file(&meta, path)?;
-                    crate::linked::source_geometry(&f.file_name, &f.bytes, &photocraft_raster::Interrupt::NONE).ok()
+                    crate::linked::source_geometry(&f.file_name, &f.bytes, &oracle_edit_raster::Interrupt::NONE).ok()
                 });
                 let (size, dpi) = geometry.unwrap_or((size_from_layer(sm), f64::from(self.dpi)));
                 let original = self.smart.linked_contents.entry(path.clone()).or_insert(sm.contents_id);
@@ -977,7 +977,7 @@ impl Ex {
 
     /// The composite of the source `uuid` (an embedded file of this export or of the imported
     /// document) in the document's pixel format, its top-left at the origin; decoded once.
-    fn source_composite(&mut self, uuid: &str) -> Option<(std::sync::Arc<Surface>, photocraft_geom::Rect)> {
+    fn source_composite(&mut self, uuid: &str) -> Option<(std::sync::Arc<Surface>, oracle_edit_geom::Rect)> {
         if let Some(c) = self.smart.composites.get(uuid) {
             return c.clone();
         }
@@ -985,7 +985,7 @@ impl Ex {
             Some(d) => Some(d.clone()),
             None => {
                 let file = self.smart.add.iter().find(|f| f.uuid == uuid).cloned().or_else(|| {
-                    let meta = photocraft_doc::Metadata {
+                    let meta = oracle_edit_doc::Metadata {
                         psd_global_blocks: self.smart.globals.iter().chain(self.smart.linked_copies.values()).cloned().collect(),
                         ..Default::default()
                     };
@@ -997,11 +997,11 @@ impl Ex {
         let c = doc.map(|d| {
             let mut s = Surface::new(self.fmt);
             let fmt = self.fmt;
-            let _ = photocraft_compose::render_bands(&d, d.bounds(), 0, |band| -> Result<(), ()> {
+            let _ = oracle_edit_compose::render_bands(&d, d.bounds(), 0, |band| -> Result<(), ()> {
                 let mut vals = Vec::with_capacity(band.px.len() * fmt.channels());
                 let mut v = [0.0f32; 5];
                 for p in &band.px {
-                    let n = photocraft_raster::from_rgba_into(&fmt, *p, &mut v);
+                    let n = oracle_edit_raster::from_rgba_into(&fmt, *p, &mut v);
                     vals.extend_from_slice(&v[..n]);
                 }
                 s.write_region(band.rect, &vals);
@@ -1027,11 +1027,11 @@ impl Ex {
     }
 
     fn convert_source(&mut self, contents_id: SmartContentsId, file_name: &str, bytes: &[u8]) -> Result<Source, String> {
-        let (name, data, size, dpi, nested) = if photocraft_format::is_pcraft(bytes) {
+        let (name, data, size, dpi, nested) = if oracle_edit_format::is_pcraft(bytes) {
             if self.smart.depth >= MAX_NESTING {
                 return Err(format!("smart objects nest more than {MAX_NESTING} deep"));
             }
-            let doc = photocraft_format::load_from_bytes(bytes).map_err(|e| format!("its contents can't be read: {e}"))?;
+            let doc = oracle_edit_format::load_from_bytes(bytes).map_err(|e| format!("its contents can't be read: {e}"))?;
             let (file, warnings) = document_to_psd_nested(
                 &doc,
                 &PsdExportOptions { force_psb: true, document_path: self.document.clone(), ..Default::default() },
@@ -1046,7 +1046,7 @@ impl Ex {
         } else {
             // Formats we can't decode (vector PDF/AI…) are still embedded; their size comes from the layer.
             let (size, dpi) =
-                crate::linked::source_geometry(file_name, bytes, &photocraft_raster::Interrupt::NONE).unwrap_or(((0.0, 0.0), f64::from(self.dpi)));
+                crate::linked::source_geometry(file_name, bytes, &oracle_edit_raster::Interrupt::NONE).unwrap_or(((0.0, 0.0), f64::from(self.dpi)));
             (file_name.to_string(), bytes.to_vec(), size, dpi, None)
         };
         let uuid = contents_uuid(contents_id, &data);
@@ -1061,7 +1061,7 @@ impl Ex {
 
     /// Pixels for a fill layer: Photoshop's cached rendering while valid,
     /// otherwise our own rendering of the fill over the canvas.
-    fn fill_pixels(&self, l: &Layer, f: &photocraft_doc::Fill) -> Surface {
+    fn fill_pixels(&self, l: &Layer, f: &oracle_edit_doc::Fill) -> Surface {
         if let Some(c) = &l.fill_cache
             && c.fill == *f
         {
@@ -1069,16 +1069,16 @@ impl Ex {
         }
         if self.cmyk
             && let Some(s) =
-                photocraft_compose::gradient_fill::render_cmyk_fill(f, self.canvas, photocraft_compose::fill_frame(l, self.canvas), self.fmt.sample)
+                oracle_edit_compose::gradient_fill::render_cmyk_fill(f, self.canvas, oracle_edit_compose::fill_frame(l, self.canvas), self.fmt.sample)
         {
             return s;
         }
         // In the frame the layer's masks give it, like the compositor (masks are stored apart).
         // Readers composite these pixels (ours keeps them as the fill's rendering), so a pattern
         // fill must be rendered from the document's patterns, not left transparent (#1907).
-        let buf = photocraft_compose::render_fill_content(l, f, self.canvas, &self.patterns);
+        let buf = oracle_edit_compose::render_fill_content(l, f, self.canvas, &self.patterns);
         let mut s = Surface::new(self.fmt);
-        let vals: Vec<f32> = buf.px.iter().flat_map(|p| photocraft_raster::from_rgba(&self.fmt, *p)).collect();
+        let vals: Vec<f32> = buf.px.iter().flat_map(|p| oracle_edit_raster::from_rgba(&self.fmt, *p)).collect();
         s.write_region(self.canvas, &vals);
         s.prune();
         s
@@ -1133,7 +1133,7 @@ impl Ex {
                 LayerContent::Smart(sm) => {
                     // Photoshop's record holds the filtered pixels without the filter mask.
                     let unmixed = match (self.smart.unfiltered.get(&l.id), sm.cache.as_ref(), sm.filter_mask.as_ref()) {
-                        (Some(u), Some(c), Some(m)) if masked(sm) => Some(photocraft_compose::filter_mask::unmix(u, c, m)),
+                        (Some(u), Some(c), Some(m)) if masked(sm) => Some(oracle_edit_compose::filter_mask::unmix(u, c, m)),
                         _ => None,
                     };
                     let r = self.record(l, extra, unmixed.as_ref().or(sm.cache.as_ref()));
@@ -1330,13 +1330,13 @@ fn merged_planes(doc: &Document, fmt: &PixelFormat, cmyk: bool, matte: bool, ctl
     let plane = n * bps;
     let mut planes = vec![0u8; plane * (cc + 1)];
     let (mut has_alpha, mut translucent) = (false, false);
-    let white = photocraft_raster::from_rgba(fmt, [1.0, 1.0, 1.0, 1.0]);
+    let white = oracle_edit_raster::from_rgba(fmt, [1.0, 1.0, 1.0, 1.0]);
     let canvas = doc.bounds();
     let w = canvas.width() as usize;
-    let space = photocraft_compose::cmyk_space(doc);
+    let space = oracle_edit_compose::cmyk_space(doc);
     let lab16 = fmt.mode == ColorMode::Lab && sample == SampleType::U16;
     let rows = canvas.height().max(1) as f32;
-    let _ = photocraft_compose::render_bands(doc, canvas, 0, |band| -> Result<(), ()> {
+    let _ = oracle_edit_compose::render_bands(doc, canvas, 0, |band| -> Result<(), ()> {
         if ctl.cancelled() {
             return Err(());
         }
@@ -1351,11 +1351,11 @@ fn merged_planes(doc: &Document, fmt: &PixelFormat, cmyk: bool, matte: bool, ctl
         // Converted and encoded on all cores, then copied into each plane.
         let parts = crate::pixels::par_map(crate::pixels::bands(band.px.len()), |range| {
             // The composite came through the document's CMYK profile: convert back through it too.
-            photocraft_color::convert::with_cmyk_space(space.as_ref(), || {
+            oracle_edit_color::convert::with_cmyk_space(space.as_ref(), || {
                 let mut out: Vec<Vec<u8>> = vec![Vec::with_capacity(range.len() * bps); cc + 1];
                 let mut v = [0.0f32; 5];
                 for p in &band.px[range.clone()] {
-                    photocraft_raster::from_rgba_into(fmt, *p, &mut v);
+                    oracle_edit_raster::from_rgba_into(fmt, *p, &mut v);
                     for c in 0..=cc {
                         // Matte against white like Photoshop (see `pixels::matte`).
                         let m = if c < cc && matte { crate::pixels::matte(v[c], v[cc], white[c]) } else { v[c] };
@@ -1387,8 +1387,8 @@ fn placeholder_planes(doc: &Document, fmt: &PixelFormat) -> Vec<u8> {
     let cc = fmt.mode.color_channels();
     let cmyk = cmyk_of(fmt);
     let lab16 = fmt.mode == ColorMode::Lab && fmt.sample == SampleType::U16;
-    let space = photocraft_compose::cmyk_space(doc);
-    let white = photocraft_color::convert::with_cmyk_space(space.as_ref(), || photocraft_raster::from_rgba(fmt, [1.0, 1.0, 1.0, 1.0]));
+    let space = oracle_edit_compose::cmyk_space(doc);
+    let white = oracle_edit_color::convert::with_cmyk_space(space.as_ref(), || oracle_edit_raster::from_rgba(fmt, [1.0, 1.0, 1.0, 1.0]));
     let n = doc.size.area() as usize;
     let mut planes = Vec::with_capacity(n * fmt.sample.bytes() * cc);
     for c in 0..cc {
@@ -1409,7 +1409,7 @@ pub fn document_to_psd(doc: &Document) -> PsdFile {
 
 /// Converts a document to a PSD/PSB file model, returning warnings about
 /// anything that could not be represented. The merged composite is rendered
-/// with `photocraft_compose::flatten`.
+/// with `oracle_edit_compose::flatten`.
 pub fn document_to_psd_with(doc: &Document, opts: &PsdExportOptions) -> (PsdFile, Vec<String>) {
     document_to_psd_nested(doc, opts, 0, &Interrupt::NONE)
 }
@@ -1499,7 +1499,7 @@ pub(crate) fn estimate_psd_size(doc: &Document) -> Option<u64> {
                 add_plane_estimate(&mut raw_bytes, &mut rows, mask_width, mask_height, 1, bytes_per_sample)?;
             }
             if let LayerContent::Smart(smart) = &layer.content
-                && let photocraft_doc::SmartSource::Embedded { bytes, .. } = &smart.source
+                && let oracle_edit_doc::SmartSource::Embedded { bytes, .. } = &smart.source
             {
                 structural_bytes = structural_bytes.checked_add(u64::try_from(bytes.len()).ok()?)?;
             }
@@ -1540,7 +1540,7 @@ pub(crate) fn estimate_psd_size(doc: &Document) -> Option<u64> {
 pub(crate) fn block_signature(sig: [u8; 4], key: [u8; 4], version: Version) -> [u8; 4] {
     match version {
         Version::Psd if sig == *b"8B64" => *b"8BIM",
-        Version::Psb if sig == *b"8BIM" && photocraft_psd::tagged::uses_long_length(version, &key) => *b"8B64",
+        Version::Psb if sig == *b"8BIM" && oracle_edit_psd::tagged::uses_long_length(version, &key) => *b"8B64",
         _ => sig,
     }
 }
@@ -1643,7 +1643,7 @@ fn document_to_psd_nested(doc: &Document, opts: &PsdExportOptions, depth: u32, c
             let LayerContent::Text(t) = &l.content else {
                 continue;
             };
-            match t.psd_raw.as_deref().and_then(|d| photocraft_text::psd::text_index(d)) {
+            match t.psd_raw.as_deref().and_then(|d| oracle_edit_text::psd::text_index(d)) {
                 Some(i) if used_txt.insert(i) => {
                     ex.text_index.insert(l.id, i);
                 }
@@ -1651,9 +1651,9 @@ fn document_to_psd_nested(doc: &Document, opts: &PsdExportOptions, depth: u32, c
             }
         }
         let objects =
-            doc.metadata.psd_global_blocks.iter().find(|(_, key, _)| key == b"Txt2").map_or(0, |(_, _, d)| photocraft_text::psd::txt2_object_count(d));
+            doc.metadata.psd_global_blocks.iter().find(|(_, key, _)| key == b"Txt2").map_or(0, |(_, _, d)| oracle_edit_text::psd::txt2_object_count(d));
         let mut next_txt = used_txt.iter().max().map_or(0, |m| m + 1).max(i32::try_from(objects).unwrap_or(i32::MAX));
-        if next_txt.saturating_add(fresh.len() as i32) > photocraft_text::psd::MAX_TEXT_INDEX + 1 {
+        if next_txt.saturating_add(fresh.len() as i32) > oracle_edit_text::psd::MAX_TEXT_INDEX + 1 {
             next_txt = 0;
         }
         for id in fresh {
@@ -1674,8 +1674,8 @@ fn document_to_psd_nested(doc: &Document, opts: &PsdExportOptions, depth: u32, c
         ctl.progress(done / units);
         !ctl.cancelled()
     };
-    let space = photocraft_compose::cmyk_space(doc);
-    photocraft_color::convert::with_cmyk_space(space.as_ref(), || ex.emit(&doc.layers, &mut tick));
+    let space = oracle_edit_compose::cmyk_space(doc);
+    oracle_edit_color::convert::with_cmyk_space(space.as_ref(), || ex.emit(&doc.layers, &mut tick));
 
     // Without Maximize Compatibility the merged image is a white placeholder and the composite
     // isn't rendered at all. A document without layer records keeps the real image: its pixels
@@ -1767,19 +1767,19 @@ fn document_to_psd_nested(doc: &Document, opts: &PsdExportOptions, depth: u32, c
     // EXIF resolution follow the ResolutionInfo resource, so no copy contradicts it (#1691).
     let ppi = Some((doc.resolution_dpi, doc.resolution_dpi)).filter(|d| d.0 > 0.0);
     if let Some(x) = &doc.metadata.xmp {
-        resources.push(ImageResource::new(ids::XMP, photocraft_codecs::export_xmp(x, ppi).as_bytes().to_vec()));
+        resources.push(ImageResource::new(ids::XMP, oracle_edit_codecs::export_xmp(x, ppi).as_bytes().to_vec()));
     }
     if let Some(e) = &doc.metadata.exif {
-        resources.push(ImageResource::new(ids::EXIF, photocraft_codecs::export_exif(e, ppi).into_owned()));
+        resources.push(ImageResource::new(ids::EXIF, oracle_edit_codecs::export_exif(e, ppi).into_owned()));
     }
     let mut global_blocks = Vec::new();
     let preserved = ex.smart.finish(crate::annotations_map::export_blocks(doc, crate::pattern_map::export_global_blocks(doc)));
     // The type layers' `Txt2` is regenerated (the auto-kern modes live there, and a preserved
     // block goes stale as text is edited): one object per `TextIndex`, at the slot each layer's
-    // `TySh` names (unused slots stay empty; see `photocraft_text::psd::build_txt2`). The block
+    // `TySh` names (unused slots stay empty; see `oracle_edit_text::psd::build_txt2`). The block
     // it replaces is handed over so a kept object keeps everything the file held beyond its text
     // and style runs (Photoshop's `/21 /1` glyph pen positions, …).
-    let text_layers: Vec<(i32, &photocraft_doc::TextLayer)> = doc
+    let text_layers: Vec<(i32, &oracle_edit_doc::TextLayer)> = doc
         .walk()
         .into_iter()
         .filter_map(|(_, _, l)| match &l.content {
@@ -1792,8 +1792,8 @@ fn document_to_psd_nested(doc: &Document, opts: &PsdExportOptions, depth: u32, c
     // writes its empty `<< /0 << >> >>` stub — readers such as Photopea reject it (#3514). Keep the
     // block when the file had one (round-trip its pen positions/extras) or a layer is Optical (the
     // one mode EngineData can't carry; #1348).
-    let txt2 = (previous.is_some() || photocraft_text::psd::needs_txt2(&text_layers))
-        .then(|| photocraft_text::psd::build_txt2_at(&text_layers, previous.as_deref(), ex.dpi));
+    let txt2 = (previous.is_some() || oracle_edit_text::psd::needs_txt2(&text_layers))
+        .then(|| oracle_edit_text::psd::build_txt2_at(&text_layers, previous.as_deref(), ex.dpi));
     for (sig, key, data) in preserved {
         if txt2.is_some() && key == *b"Txt2" {
             continue;
@@ -1871,7 +1871,7 @@ fn document_to_psd_nested(doc: &Document, opts: &PsdExportOptions, depth: u32, c
     // open a 32-bit file without them (#291).
     let color_mode_data = match duotone_inks {
         Some(raw) => raw,
-        None => photocraft_psd::hdr::color_mode_data_for_depth(header.depth),
+        None => oracle_edit_psd::hdr::color_mode_data_for_depth(header.depth),
     };
     let file = PsdFile {
         header,
@@ -1906,7 +1906,7 @@ mod tests {
     use super::*;
 
     fn document(width: u32, height: u32) -> Document {
-        Document::new("size estimate", photocraft_geom::Size::new(width, height), ColorMode::Rgb, SampleType::U8)
+        Document::new("size estimate", oracle_edit_geom::Size::new(width, height), ColorMode::Rgb, SampleType::U8)
     }
 
     /// Photoshop opens a PSD's bottom layer as its Background only when that layer has no
@@ -1914,8 +1914,8 @@ mod tests {
     /// files reopened with the Background as an ordinary layer).
     #[test]
     fn a_background_is_written_without_a_transparency_channel() {
-        use photocraft_color::Color;
-        let size = photocraft_geom::Size::new(8, 6);
+        use oracle_edit_color::Color;
+        let size = oracle_edit_geom::Size::new(8, 6);
         let mut doc = Document::with_background("bg", size, ColorMode::Rgb, SampleType::U8, Color::rgb(0.2, 0.4, 0.6));
         doc.layers.push(Layer::raster("Layer 1", doc.pixel_format()));
         let file = document_to_psd(&doc);
@@ -1939,10 +1939,10 @@ mod tests {
     }
 
     /// A flat 1-bit Bitmap file (no layers) opens in Photoshop as its Background; so does it in
-    /// PhotoCraft, and it is written back as one (no transparency channel).
+    /// Oracle Edit, and it is written back as one (no transparency channel).
     #[test]
     fn a_flat_bitmap_file_opens_and_saves_as_a_background() {
-        let file = photocraft_psd::testgen::merged_only(Version::Psd, PsdMode::Bitmap, 1, Compression::Raw, 8, 4);
+        let file = oracle_edit_psd::testgen::merged_only(Version::Psd, PsdMode::Bitmap, 1, Compression::Raw, 8, 4);
         let doc = crate::import("flat.psd", &file.to_bytes().unwrap()).unwrap().document;
         let bg = &doc.layers[0];
         assert!(bg.name == "Background" && bg.locks.transparency && bg.locks.position, "{:?}", bg.locks);
@@ -1983,9 +1983,9 @@ mod tests {
     #[test]
     fn layer_block_follows_a_kept_merged_transparency_marker() {
         for (depth, key, marker) in [(SampleType::F32, *b"Lr32", *b"Mt32"), (SampleType::U16, *b"Lr16", *b"Mt16"), (SampleType::F32, *b"Lr32", *b"Mtrn")] {
-            let mut doc = Document::new("t", photocraft_geom::Size::new(8, 6), ColorMode::Rgb, depth);
+            let mut doc = Document::new("t", oracle_edit_geom::Size::new(8, 6), ColorMode::Rgb, depth);
             let mut s = Surface::new(doc.pixel_format());
-            s.fill_rect(photocraft_geom::Rect::new(1, 1, 5, 4), &[0.5, 0.2, 0.9, 1.0]);
+            s.fill_rect(oracle_edit_geom::Rect::new(1, 1, 5, 4), &[0.5, 0.2, 0.9, 1.0]);
             doc.layers.push(Layer::new("Layer 1", LayerContent::Raster(s)));
             doc.metadata.psd_global_blocks = vec![(*b"8BIM", *b"Patt", std::sync::Arc::new(Vec::new())), (*b"8BIM", marker, std::sync::Arc::new(Vec::new()))];
             let saved = PsdFile::from_bytes(&document_to_psd(&doc).to_bytes().unwrap()).unwrap();
@@ -1995,7 +1995,7 @@ mod tests {
             assert!(at < index, "{depth:?}: {marker:?} at {at}, the layer block at {index}");
         }
         // Without a marker the layer block stays first.
-        let mut doc = Document::new("t", photocraft_geom::Size::new(8, 6), ColorMode::Rgb, SampleType::F32);
+        let mut doc = Document::new("t", oracle_edit_geom::Size::new(8, 6), ColorMode::Rgb, SampleType::F32);
         doc.layers.push(Layer::new("Layer 1", LayerContent::Raster(Surface::new(doc.pixel_format()))));
         doc.metadata.psd_global_blocks = vec![(*b"8BIM", *b"Patt", std::sync::Arc::new(Vec::new()))];
         let saved = PsdFile::from_bytes(&document_to_psd(&doc).to_bytes().unwrap()).unwrap();
@@ -2005,7 +2005,7 @@ mod tests {
     #[test]
     fn unreadable_lr16_warns_on_import_and_is_not_saved_twice() {
         // #2700: a 16-bit file whose Lr16 block claims five layers but holds none.
-        let mut file = photocraft_psd::testgen::merged_only(Version::Psd, PsdMode::Rgb, 16, Compression::Raw, 8, 6);
+        let mut file = oracle_edit_psd::testgen::merged_only(Version::Psd, PsdMode::Rgb, 16, Compression::Raw, 8, 6);
         file.global_layer_mask = Some(GlobalLayerMask::default());
         file.global_blocks.push(TaggedBlock::new(*b"Lr16", vec![0, 5, 0, 0]));
         let imported = crate::import("broken.psd", &file.to_bytes().unwrap()).unwrap();
@@ -2021,9 +2021,9 @@ mod tests {
     #[test]
     fn photo_filter_psd_is_four_byte_aligned_and_round_trips() {
         let color = [60000u16, 30000, 0].map(|x| x as f32 / 65535.0);
-        let adjustment = photocraft_doc::Adjustment::PhotoFilter { color, density: 0.14, preserve_luminosity: true };
+        let adjustment = oracle_edit_doc::Adjustment::PhotoFilter { color, density: 0.14, preserve_luminosity: true };
         let mut doc =
-            Document::with_background("Photo Filter PSD", photocraft_geom::Size::new(32, 24), ColorMode::Rgb, SampleType::U8, photocraft_doc::Color::WHITE);
+            Document::with_background("Photo Filter PSD", oracle_edit_geom::Size::new(32, 24), ColorMode::Rgb, SampleType::U8, oracle_edit_doc::Color::WHITE);
         let mut layer = Layer::new("Warming Filter", LayerContent::Adjustment(adjustment.clone()));
         doc.layers.push(layer.clone());
 
@@ -2062,9 +2062,9 @@ mod tests {
         // The #3777 block (Photoshop CS2, XYZ colour): saved back byte-exact while unchanged.
         let v3 = vec![0, 3, 0, 0, 0x5e, 0x7f, 0, 0, 0x61, 0xaa, 0, 0, 0x0e, 0xf3, 0, 0, 0, 0x3f, 1, 0];
         let adjustment = crate::adjust_map::parse(b"phfl", &v3, None, crate::adjust_map::Channels::Rgb);
-        let photocraft_doc::Adjustment::PhotoFilter { color, .. } = adjustment else { panic!("{adjustment:?}") };
+        let oracle_edit_doc::Adjustment::PhotoFilter { color, .. } = adjustment else { panic!("{adjustment:?}") };
         let mut doc =
-            Document::with_background("Photo Filter v3", photocraft_geom::Size::new(8, 8), ColorMode::Rgb, SampleType::U8, photocraft_doc::Color::WHITE);
+            Document::with_background("Photo Filter v3", oracle_edit_geom::Size::new(8, 8), ColorMode::Rgb, SampleType::U8, oracle_edit_doc::Color::WHITE);
         let mut layer = Layer::new("Photo Filter 1", LayerContent::Adjustment(adjustment.clone()));
         layer.psd_blocks = vec![(*b"phfl", std::sync::Arc::new(v3.clone()))];
         doc.layers.push(layer);
@@ -2075,14 +2075,14 @@ mod tests {
         };
         assert_eq!(phfl(&doc), v3);
         // Once edited it is written as version 2 (RGB), and the colour survives.
-        let edited = photocraft_doc::Adjustment::PhotoFilter { color, density: 0.5, preserve_luminosity: true };
+        let edited = oracle_edit_doc::Adjustment::PhotoFilter { color, density: 0.5, preserve_luminosity: true };
         if let Some(l) = doc.layers.last_mut() {
             l.content = LayerContent::Adjustment(edited.clone());
         }
         let saved = phfl(&doc);
         assert_eq!(&saved[..2], &[0, 2]);
         let reread = crate::adjust_map::parse(b"phfl", &saved, None, crate::adjust_map::Channels::Rgb);
-        let photocraft_doc::Adjustment::PhotoFilter { color: back, density, .. } = reread else { panic!("{reread:?}") };
+        let oracle_edit_doc::Adjustment::PhotoFilter { color: back, density, .. } = reread else { panic!("{reread:?}") };
         assert!(back.iter().zip(color).all(|(b, c)| (b - c).abs() <= 1.0 / 65535.0), "{back:?} vs {color:?}");
         assert_eq!(density, 0.5);
     }
@@ -2173,7 +2173,7 @@ mod tests {
         let mut layer = Layer::raster("Layer 1", doc.pixel_format());
         layer.surface_mut().unwrap().write_pixel(1, 1, &[1.0, 0.0, 0.0, 1.0]);
         doc.layers.push(layer);
-        let mut a = photocraft_doc::AlphaChannel::new("Alpha 1", photocraft_raster::Surface::new(PixelFormat::GRAY8));
+        let mut a = oracle_edit_doc::AlphaChannel::new("Alpha 1", oracle_edit_raster::Surface::new(PixelFormat::GRAY8));
         a.opacity = 0.5;
         doc.channels.push(a);
         let file = document_to_psd(&doc);

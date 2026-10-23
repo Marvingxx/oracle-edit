@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 
-use photocraft_color::{PixelFormat, SampleType};
-use photocraft_doc::Document;
-use photocraft_raster::{Rgba8Image, Tile};
+use oracle_edit_color::{PixelFormat, SampleType};
+use oracle_edit_doc::Document;
+use oracle_edit_raster::{Rgba8Image, Tile};
 
 use crate::convert::{self, Fetch, Loader, Sink, is_valid_hash, swap_to_le};
 use crate::manifest::{ContentM, FORMAT_VERSION, Hash, LayerM, Manifest};
@@ -55,9 +55,9 @@ fn hash_bytes(b: &[u8]) -> Hash {
 }
 
 fn png(img: &Rgba8Image) -> Result<Vec<u8>> {
-    let image = photocraft_codecs::Image::from_u8(img.width, img.height, photocraft_codecs::ChannelLayout::Rgba, img.pixels.clone())
+    let image = oracle_edit_codecs::Image::from_u8(img.width, img.height, oracle_edit_codecs::ChannelLayout::Rgba, img.pixels.clone())
         .map_err(|e| FormatError::Unsupported(format!("preview: {e}")))?;
-    photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).map_err(|e| FormatError::Unsupported(format!("preview: {e}")))
+    oracle_edit_codecs::encode(&image, oracle_edit_codecs::Format::Png, &Default::default()).map_err(|e| FormatError::Unsupported(format!("preview: {e}")))
 }
 
 // ---------------------------------------------------------------------------
@@ -254,7 +254,7 @@ impl Fetch for LoadFetch<'_> {
 }
 
 /// Refuses a declared canvas outside `opts`' budget before anything is decoded for it (#2935).
-fn admit_canvas(size: photocraft_geom::Size, opts: &LoadOptions) -> Result<()> {
+fn admit_canvas(size: oracle_edit_geom::Size, opts: &LoadOptions) -> Result<()> {
     let (w, h) = (size.width, size.height);
     if w == 0 || h == 0 {
         return Err(FormatError::corrupt(format!("canvas size {w}x{h} is empty")));
@@ -778,7 +778,7 @@ impl PcraftWriter {
         }
         let manifest = Manifest {
             format_version: FORMAT_VERSION,
-            generator: format!("photocraft-format {}", env!("CARGO_PKG_VERSION")),
+            generator: format!("oracle-edit-format {}", env!("CARGO_PKG_VERSION")),
             document,
             thumbnail: opts.thumbnail.as_ref().map(|_| THUMB.to_owned()),
             composite: opts.composite.as_ref().map(|_| COMPOSITE.to_owned()),
@@ -985,12 +985,12 @@ impl PcraftWriter {
 #[test]
 fn tile_hash_cache_keeps_sample_byte_order_in_its_identity() {
     let mut cache = HashMap::new();
-    let mut surface = photocraft_raster::Surface::new(PixelFormat::RGBA8);
+    let mut surface = oracle_edit_raster::Surface::new(PixelFormat::RGBA8);
     surface.write_pixel(0, 0, &[0.1, 0.2, 0.3, 1.0]);
-    let tile = surface.tile(photocraft_geom::TileCoord::new(0, 0)).unwrap();
+    let tile = surface.tile(oracle_edit_geom::TileCoord::new(0, 0)).unwrap();
     let mut collect = Collect { hash_cache: Some(&mut cache), ..Default::default() };
     for sample in [SampleType::U8, SampleType::U16] {
-        let format = if sample == SampleType::U8 { PixelFormat::RGBA8 } else { PixelFormat::new(photocraft_color::ColorMode::Grayscale, sample, true) };
+        let format = if sample == SampleType::U8 { PixelFormat::RGBA8 } else { PixelFormat::new(oracle_edit_color::ColorMode::Grayscale, sample, true) };
         assert_eq!(collect.tile(format, tile), hash_bytes(&tile_le(tile, sample)));
     }
     drop(collect);
@@ -1019,11 +1019,11 @@ fn blob_hash_cache_tracks_arc_identity_without_retaining_payloads() {
 #[cfg(test)]
 #[test]
 fn compressed_cache_budget_limits_retained_capacity_without_changing_bytes() {
-    use photocraft_doc::{Layer, LayerContent};
-    use photocraft_geom::Size;
-    use photocraft_raster::Surface;
+    use oracle_edit_doc::{Layer, LayerContent};
+    use oracle_edit_geom::Size;
+    use oracle_edit_raster::Surface;
 
-    let mut doc = Document::new("cache", Size::new(257, 1), photocraft_color::ColorMode::Rgb, SampleType::U8);
+    let mut doc = Document::new("cache", Size::new(257, 1), oracle_edit_color::ColorMode::Rgb, SampleType::U8);
     let mut surface = Surface::new(doc.pixel_format());
     surface.write_pixel(0, 0, &[0.2, 0.4, 0.6, 1.0]);
     surface.write_pixel(256, 0, &[0.6, 0.4, 0.2, 1.0]);

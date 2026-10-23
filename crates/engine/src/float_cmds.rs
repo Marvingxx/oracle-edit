@@ -16,9 +16,9 @@
 
 use std::sync::Arc;
 
-use photocraft_color::PixelFormat;
-use photocraft_doc::{Document, LayerContent, LayerId};
-use photocraft_raster::Surface;
+use oracle_edit_color::PixelFormat;
+use oracle_edit_doc::{Document, LayerContent, LayerId};
+use oracle_edit_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
@@ -32,7 +32,7 @@ pub struct CutParts {
     pub layer: LayerId,
     rest: Surface,
     piece: Surface,
-    piece_bounds: photocraft_geom::Rect,
+    piece_bounds: oracle_edit_geom::Rect,
     /// The pieces are the layer's mask (`"target":"mask"`), not its pixels.
     mask: bool,
 }
@@ -112,10 +112,10 @@ impl CutParts {
 
 /// Extract the selected pixels of `base` over `b` into a `with_alpha` surface, tile by tile in
 /// parallel. Fully selected tiles on an alpha surface share `base`'s `Arc<Tile>` directly.
-fn cut_piece(base: &Surface, sel: &Surface, b: photocraft_geom::Rect, with_alpha: PixelFormat) -> Result<Surface> {
-    use photocraft_color::{SampleType, read_sample};
-    use photocraft_geom::{TILE_SIZE, TileCoord};
-    use photocraft_raster::Tile;
+fn cut_piece(base: &Surface, sel: &Surface, b: oracle_edit_geom::Rect, with_alpha: PixelFormat) -> Result<Surface> {
+    use oracle_edit_color::{SampleType, read_sample};
+    use oracle_edit_geom::{TILE_SIZE, TileCoord};
+    use oracle_edit_raster::Tile;
     use rayon::prelude::*;
 
     let mut piece = Surface::new(with_alpha);
@@ -191,7 +191,7 @@ fn cut_piece(base: &Surface, sel: &Surface, b: photocraft_geom::Rect, with_alpha
                     if px[a] <= 0.0 {
                         continue;
                     }
-                    photocraft_raster::encode_pixel(&with_alpha, &px[..n], dst_px);
+                    oracle_edit_raster::encode_pixel(&with_alpha, &px[..n], dst_px);
                     let non_zero = match with_alpha.sample {
                         SampleType::U8 => dst_px.get(alpha_off) != Some(&0) || dst_px.iter().any(|&v| v != 0),
                         SampleType::U16 => dst_px.get(alpha_off..dst_bpp) != Some(&[0, 0]) || dst_px.iter().any(|&v| v != 0),
@@ -252,7 +252,7 @@ fn can_float(s: &Session) -> std::result::Result<(), String> {
 
 /// Do `l`'s locks (its own, or a locked group's: `effective_locks`) stop its selected pixels
 /// floating? The Background is position-locked, but its selected pixels move (Photoshop).
-pub fn locked_for_float(doc: &Document, l: &photocraft_doc::Layer) -> bool {
+pub fn locked_for_float(doc: &Document, l: &oracle_edit_doc::Layer) -> bool {
     let locks = doc.effective_locks(l.id);
     locks.all || (locks.position && !doc.is_background(l.id))
 }
@@ -286,7 +286,7 @@ pub fn drop_floating(s: &mut Session) -> Result<Value> {
     }
     s.edit("Move", |doc, _| {
         f.parts.place(doc, dx, dy)?;
-        doc.selection = doc.selection.as_ref().map(|sel| photocraft_algo::resample::translate_surface(sel, dx, dy));
+        doc.selection = doc.selection.as_ref().map(|sel| oracle_edit_algo::resample::translate_surface(sel, dx, dy));
         Ok(())
     })?;
     Ok(json!({"dropped": true, "offset": [dx, dy]}))

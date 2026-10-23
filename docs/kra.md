@@ -1,15 +1,15 @@
 # Krita documents
 
-PhotoCraft opens Krita's native documents (`.kra`, and the `.krz` archive variant) with their
+Oracle Edit opens Krita's native documents (`.kra`, and the `.krz` archive variant) with their
 layers. File › Open, recent files, drops, the CLI (`convert`, `info`, `batch`) and automation
-(`doc.open`, MCP) all use the reader in `photocraft-io`; the browser build accepts them too. A
+(`doc.open`, MCP) all use the reader in `oracle-edit-io`; the browser build accepts them too. A
 file is recognised by its `mimetype` entry (`application/x-krita`). Krita files are import-only:
 Save suggests OpenRaster (`.ora`), which Krita opens with its layers, and `.pcraft` keeps
 everything.
 
 ## What is read
 
-| Krita | PhotoCraft |
+| Krita | Oracle Edit |
 |---|---|
 | Paint layers, 8 and 16-bit RGBA, 8 and 16-bit gray | pixel layers, at the document's depth (a gray layer in an RGB document is converted) |
 | Layer position (`x`, `y`), tiles anywhere, also off-canvas | kept |
@@ -41,7 +41,7 @@ children (checked against Krita's merged image).
 
 ## Limits and safety
 
-The reader uses the bounded ZIP reader of `photocraft-format` (no ZIP64, CRC-checked), parses
+The reader uses the bounded ZIP reader of `oracle-edit-format` (no ZIP64, CRC-checked), parses
 `maindoc.xml` with `roxmltree` (32 MiB cap; the DTD is declared by public id and not fetched),
 and decodes tiles with a bounds-checked LZF decoder that must produce exactly one tile. Tiles
 are at most 1024 px a side; canvases at most 300,000 px a side and 1 GiB of decoded pixels;
@@ -64,8 +64,8 @@ Real-file checks use the Krita-authored oracles in
 the files are sRGB):
 
 ```sh
-KRITA_TEST_DIR=/path/to/photocraft-corpus/krita cargo test -p photocraft-io --test krita_corpus -- --ignored --nocapture
-KRITA_TEST_DIR=/path/to/photocraft-corpus/krita cargo test -p photocraft-engine --test kra -- --ignored
+KRITA_TEST_DIR=/path/to/photocraft-corpus/krita cargo test -p oracle-edit-io --test krita_corpus -- --ignored --nocapture
+KRITA_TEST_DIR=/path/to/photocraft-corpus/krita cargo test -p oracle-edit-engine --test kra -- --ignored
 ```
 
 2026-10-09, Krita 5.2.9: 31 of 35 `.kra` files render within 3/255 of Krita's merged image; the

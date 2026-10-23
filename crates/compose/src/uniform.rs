@@ -10,10 +10,10 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, PoisonError};
 
-use photocraft_color::blend::BlendMode;
-use photocraft_doc::{Adjustment, Document, LayerContent};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use oracle_edit_color::blend::BlendMode;
+use oracle_edit_doc::{Adjustment, Document, LayerContent};
+use oracle_edit_geom::Rect;
+use oracle_edit_raster::Surface;
 
 /// The surfaces a document composites from, when its composite at each pixel depends only on
 /// their values at that pixel.
@@ -28,7 +28,7 @@ pub(crate) struct UniformAreas<'a> {
 impl<'a> UniformAreas<'a> {
     /// `None` when some layer's composite depends on more than its pixels at the same place.
     pub(crate) fn new(doc: &'a Document) -> Option<Self> {
-        if doc.mode == photocraft_color::ColorMode::Multichannel {
+        if doc.mode == oracle_edit_color::ColorMode::Multichannel {
             return None;
         }
         let mut surfaces = Vec::new();

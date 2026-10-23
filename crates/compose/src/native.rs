@@ -15,12 +15,12 @@
 //! of its RGB composite, whose black differs from the file's. Such stacks are also rendered for
 //! display this way ([`render_cmyk`]); stacks of raster layers alone keep the RGB compositor there.
 
-use photocraft_color::blend::BlendMode;
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::adjust::ToneSpace;
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent, LayerMask};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use oracle_edit_color::blend::BlendMode;
+use oracle_edit_color::{ColorMode, PixelFormat, SampleType};
+use oracle_edit_doc::adjust::ToneSpace;
+use oracle_edit_doc::{Adjustment, Document, Layer, LayerContent, LayerMask};
+use oracle_edit_geom::Rect;
+use oracle_edit_raster::Surface;
 
 use crate::{Buffer, adjust};
 
@@ -287,10 +287,10 @@ pub fn render_cmyk(doc: &Document, rect: Rect, tile: i32) -> Option<Buffer> {
         let r = Rect::new(rect.x0, y0, rect.x1, y0.saturating_add((px.len() / w) as i32));
         let (mut acc, mut src, mut mv) = (Vec::new(), Vec::new(), Vec::new());
         stack.composite(r, &mut acc, &mut src, &mut mv);
-        photocraft_color::convert::with_cmyk_space(cmyk.as_ref(), || {
+        oracle_edit_color::convert::with_cmyk_space(cmyk.as_ref(), || {
             for (o, p) in px.iter_mut().zip(&acc) {
                 if p[INKS] > 0.0 {
-                    let [r, g, b] = photocraft_color::convert::cmyk_to_rgb([p[0], p[1], p[2], p[3]]);
+                    let [r, g, b] = oracle_edit_color::convert::cmyk_to_rgb([p[0], p[1], p[2], p[3]]);
                     *o = [r, g, b, p[INKS]];
                 }
             }

@@ -9,13 +9,13 @@
 //! OK runs `filter.liquify` with the same strokes and gets the same field.
 
 use egui::{Align2, Color32, FontId, Pos2, Rect as ERect, Sense, Stroke, TextureHandle, pos2, vec2};
-use photocraft_algo::liquify::{LiquifyField, LiquifyStroke, LiquifyTool, ProxyImage, auto_cell};
-use photocraft_doc::{Document, LayerId};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use oracle_edit_algo::liquify::{LiquifyField, LiquifyStroke, LiquifyTool, ProxyImage, auto_cell};
+use oracle_edit_doc::{Document, LayerId};
+use oracle_edit_geom::Rect;
+use oracle_edit_raster::Surface;
 use serde_json::{Value, json};
 
-use crate::PhotocraftApp;
+use crate::OracleEditApp;
 use crate::canvas::ToolEvent;
 use crate::theme::Tokens;
 use crate::widgets;
@@ -482,7 +482,7 @@ impl LiquifyDialog {
 }
 
 /// Opens the dialog on the active layer.
-pub fn open(app: &mut PhotocraftApp, ctx: &egui::Context) -> Result<(), String> {
+pub fn open(app: &mut OracleEditApp, ctx: &egui::Context) -> Result<(), String> {
     let (layer, surf, _) = crate::distort_ui::active_pixels(app)?;
     let st = app.session.active().ok_or("no document")?;
     let canvas = st.doc.bounds();
@@ -537,21 +537,21 @@ pub fn open(app: &mut PhotocraftApp, ctx: &egui::Context) -> Result<(), String> 
 }
 
 /// Keeps the brush settings for the next time Liquify opens, also after a restart.
-fn remember(app: &mut PhotocraftApp, opts: &LiquifyOpts) {
+fn remember(app: &mut OracleEditApp, opts: &LiquifyOpts) {
     let v = opts.to_json();
     app.session.prefs.edit(|p| p.dialogs.insert(REMEMBERED.into(), v));
 }
 
 /// Cancel (button, Esc or the control channel): the document is untouched; the brush settings
 /// are kept.
-pub fn cancel(app: &mut PhotocraftApp) {
+pub fn cancel(app: &mut OracleEditApp) {
     if let Some(d) = app.distort.liquify.take() {
         remember(app, &d.opts);
     }
 }
 
 /// OK: runs `filter.liquify` with the recorded strokes (one history step).
-pub fn commit(app: &mut PhotocraftApp) {
+pub fn commit(app: &mut OracleEditApp) {
     let Some(mut d) = app.distort.liquify.take() else { return };
     remember(app, &d.opts);
     d.end();
@@ -563,7 +563,7 @@ pub fn commit(app: &mut PhotocraftApp) {
 }
 
 /// Control channel: `filter.liquify {"ui": {...}}` while the dialog is open.
-pub fn control(app: &mut PhotocraftApp, ui: &Value) -> Result<Value, String> {
+pub fn control(app: &mut OracleEditApp, ui: &Value) -> Result<Value, String> {
     if ui.get("commit").and_then(Value::as_bool) == Some(true) {
         commit(app);
         return Ok(json!({"committed": true}));
@@ -634,7 +634,7 @@ fn resized_brush(start_size: f32, start_density: f32, dx: f32, dy: f32) -> (f32,
 /// Pointer in document coordinates (from the preview or the control channel). Alt at
 /// pointer-down subtracts from the freeze mask (lasso), reverses a twirl and swaps Pucker/Bloat;
 /// Shift adds to the mask, same as no modifier.
-pub fn pointer(app: &mut PhotocraftApp, ev: ToolEvent, mods: egui::Modifiers) {
+pub fn pointer(app: &mut OracleEditApp, ev: ToolEvent, mods: egui::Modifiers) {
     let now = crate::gpu_canvas::now_ms();
     let Some(d) = app.distort.liquify.as_mut() else { return };
     match ev {
@@ -671,7 +671,7 @@ pub fn pointer(app: &mut PhotocraftApp, ev: ToolEvent, mods: egui::Modifiers) {
 }
 
 /// Ctrl+Z / Ctrl+Shift+Z inside Liquify, including while a slider's text field is focused.
-pub fn history_keys(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn history_keys(app: &mut OracleEditApp, ctx: &egui::Context) {
     let Some(d) = app.distort.liquify.as_mut() else { return };
     let cmd_shift = egui::Modifiers::COMMAND | egui::Modifiers::SHIFT;
     if ctx.input_mut(|i| i.consume_key(cmd_shift, egui::Key::Z)) {
@@ -681,7 +681,7 @@ pub fn history_keys(app: &mut PhotocraftApp, ctx: &egui::Context) {
     }
 }
 
-pub fn keys(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn keys(app: &mut OracleEditApp, ctx: &egui::Context) {
     history_keys(app, ctx);
     let Some(d) = app.distort.liquify.as_mut() else { return };
     // Ctrl+H (Hide Extras) toggles the red freeze-mask overlay; the mask itself stays active.
@@ -757,10 +757,10 @@ fn shortcut(t: LiquifyTool) -> &'static str {
 /// The backdrop for Show Backdrop › Use `of`: the document as it is (All Layers, the liquified
 /// layer's own pixels included, as in Photoshop) or that one layer alone. A layer that is gone
 /// shows All Layers.
-fn load_backdrop(app: &PhotocraftApp, ctx: &egui::Context, of: Option<u64>, canvas: Rect) -> Option<TextureHandle> {
+fn load_backdrop(app: &OracleEditApp, ctx: &egui::Context, of: Option<u64>, canvas: Rect) -> Option<TextureHandle> {
     let st = app.session.active()?;
-    let buf = photocraft_compose::render(&backdrop_doc(&st.doc, of), canvas);
-    let mut s = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
+    let buf = oracle_edit_compose::render(&backdrop_doc(&st.doc, of), canvas);
+    let mut s = oracle_edit_raster::Surface::new(oracle_edit_color::PixelFormat::RGBA8);
     let flat: Vec<f32> = buf.px.iter().flat_map(|p| *p).collect();
     s.write_region(canvas, &flat);
     Some(ctx.load_texture("liquify-backdrop", crate::distort_ui::surface_image(&s, canvas, PROXY_SIDE), egui::TextureOptions::LINEAR))
@@ -781,11 +781,11 @@ fn backdrop_doc(doc: &Document, of: Option<u64>) -> std::borrow::Cow<'_, Documen
 }
 
 /// Makes layer `id` and the groups holding it visible; whether it was found.
-fn reveal(layers: &mut [photocraft_doc::Layer], id: LayerId) -> bool {
+fn reveal(layers: &mut [oracle_edit_doc::Layer], id: LayerId) -> bool {
     layers.iter_mut().any(|l| {
         let found = l.id == id
             || match &mut l.content {
-                photocraft_doc::LayerContent::Group(g) => reveal(&mut g.children, id),
+                oracle_edit_doc::LayerContent::Group(g) => reveal(&mut g.children, id),
                 _ => false,
             };
         if found {
@@ -818,7 +818,7 @@ fn backdrop_layering<T: Copy>(backdrop: Option<T>, mode: BackdropMode, opacity: 
 }
 
 /// Draws the dialog (a full-window layer over the app).
-pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut OracleEditApp, ctx: &egui::Context) {
     let t = Tokens::get(ctx);
     let screen = ctx.content_rect();
     // The backdrop is built when it's first shown and again when its Use changes.
@@ -1183,8 +1183,8 @@ mod tests {
         assert_eq!((size, density), (1.0, 50.0));
     }
 
-    fn app_with_layer() -> PhotocraftApp {
-        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+    fn app_with_layer() -> OracleEditApp {
+        let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), Default::default());
         app.session.execute("file.new", json!({"width": 120, "height": 80, "depth": 8})).unwrap();
         app.session.execute("layer.new.layer", json!({})).unwrap();
         app.session
@@ -1248,7 +1248,7 @@ mod tests {
         let app = app_with_layer();
         let st = app.session.active().unwrap();
         let (layer, background) = (st.active_layer.unwrap(), st.doc.layers[0].id);
-        let at = |doc: &Document| photocraft_compose::render(doc, Rect::new(10, 10, 11, 11)).px[0];
+        let at = |doc: &Document| oracle_edit_compose::render(doc, Rect::new(10, 10, 11, 11)).px[0];
         let own = at(&st.doc);
         assert_eq!(at(&backdrop_doc(&st.doc, None)), own, "All Layers");
         assert_eq!(at(&backdrop_doc(&st.doc, Some(layer.0))), own, "the liquified layer alone");
@@ -1452,7 +1452,7 @@ mod tests {
         let mut app = app_with_layer();
         open(&mut app, &ctx).unwrap();
         control(&mut app, &json!({"tool": "forwardWarp", "size": 40})).unwrap();
-        let draw = |app: &mut PhotocraftApp, x: f64| {
+        let draw = |app: &mut OracleEditApp, x: f64| {
             for ev in
                 [ToolEvent::Down { x, y: 40.0, pressure: 1.0 }, ToolEvent::Move { x: x + 14.0, y: 40.0, pressure: 1.0 }, ToolEvent::Up { x: x + 14.0, y: 40.0 }]
             {
@@ -1487,7 +1487,7 @@ mod tests {
         let mut app = app_with_layer();
         open(&mut app, &ctx).unwrap();
         control(&mut app, &json!({"tool": "lassoMask"})).unwrap();
-        let lasso = |app: &mut PhotocraftApp, m: egui::Modifiers, r: [f64; 4]| {
+        let lasso = |app: &mut OracleEditApp, m: egui::Modifiers, r: [f64; 4]| {
             pointer(app, ToolEvent::Down { x: r[0], y: r[1], pressure: 1.0 }, m);
             for (x, y) in [(r[2], r[1]), (r[2], r[3]), (r[0], r[3])] {
                 pointer(app, ToolEvent::Move { x, y, pressure: 1.0 }, m);
@@ -1515,7 +1515,7 @@ mod tests {
         let ctx = egui::Context::default();
         let mut app = app_with_layer();
         open(&mut app, &ctx).unwrap();
-        let dab = |app: &mut PhotocraftApp, m: egui::Modifiers| {
+        let dab = |app: &mut OracleEditApp, m: egui::Modifiers| {
             pointer(app, ToolEvent::Down { x: 50.0, y: 40.0, pressure: 1.0 }, m);
             pointer(app, ToolEvent::Up { x: 50.0, y: 40.0 }, m);
             app.distort.liquify.as_ref().unwrap().strokes.last().unwrap().tool

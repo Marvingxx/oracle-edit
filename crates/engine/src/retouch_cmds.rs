@@ -5,19 +5,19 @@
 //! `spacing`, `layer`), respects the active selection as a mask and the layer's transparency lock, and
 //! works at any depth (8/16/32f) and colour model. Like the Brush, each paints the targeted surface:
 //! the layer's pixels, its mask (`"target":"mask"`), an alpha channel or the Quick Mask (`"target"`,
-//! filled in from the Channels panel when absent). The pixel algorithms live in `photocraft-algo`
-//! (`poisson`, `inpaint`, `retouch`) and the dab machinery in `photocraft-paint::retouch`; this module
+//! filled in from the Channels panel when absent). The pixel algorithms live in `oracle-edit-algo`
+//! (`poisson`, `inpaint`, `retouch`) and the dab machinery in `oracle-edit-paint::retouch`; this module
 //! only parses parameters and wires them together.
 
-use photocraft_algo::inpaint::{self, CompleteParams};
-use photocraft_algo::poisson;
-use photocraft_algo::retouch::{ToneRange, dodge_burn, local_blur, local_sharpen, sponge};
-use photocraft_color::{BlendMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, LayerContent, LayerId};
-use photocraft_geom::Rect;
-use photocraft_paint::retouch::{Footprint, Region, Smudge, alpha_index, apply_coverage, apply_dab_stroke};
-use photocraft_paint::{BrushSettings, Stroke, StrokePoint};
-use photocraft_raster::{Surface, from_rgba_into, to_rgba};
+use oracle_edit_algo::inpaint::{self, CompleteParams};
+use oracle_edit_algo::poisson;
+use oracle_edit_algo::retouch::{ToneRange, dodge_burn, local_blur, local_sharpen, sponge};
+use oracle_edit_color::{BlendMode, PixelFormat, SampleType};
+use oracle_edit_doc::{Document, LayerContent, LayerId};
+use oracle_edit_geom::Rect;
+use oracle_edit_paint::retouch::{Footprint, Region, Smudge, alpha_index, apply_coverage, apply_dab_stroke};
+use oracle_edit_paint::{BrushSettings, Stroke, StrokePoint};
+use oracle_edit_raster::{Surface, from_rgba_into, to_rgba};
 use rayon::prelude::*;
 use serde_json::{Value, json};
 
@@ -87,7 +87,7 @@ fn reject_huge_stroke(cmd: &str, stroke: &Stroke) -> Result<()> {
 /// every dab is placed (tips, dynamics and scattering included) and checked against `max`, and
 /// only a stroke that fits is made dense. `max` is a parameter so tests can inject a small budget.
 fn coverage_within(cmd: &str, stroke: &Stroke, max: u64) -> Result<(Rect, Vec<f32>)> {
-    photocraft_paint::retouch::stroke_coverage_within(stroke, max).ok_or_else(|| bad(cmd, format!("stroke too large (at most {max} px)")))
+    oracle_edit_paint::retouch::stroke_coverage_within(stroke, max).ok_or_else(|| bad(cmd, format!("stroke too large (at most {max} px)")))
 }
 
 /// [`coverage_within`] at the shared allowance.
@@ -239,7 +239,7 @@ pub(crate) fn composite_region(pre: &Document, id: Option<LayerId>, which: Sampl
             }
         }
     }
-    let buf = photocraft_compose::render(&doc, rect);
+    let buf = oracle_edit_compose::render(&doc, rect);
     let n = fmt.channels();
     let mut out = Region::new(rect, n);
     let mut enc = [0.0f32; 8];
@@ -299,7 +299,7 @@ fn clone_sample(
 
 /// Read-only clone overlay. Shares the stroke sampler without anchoring a source or editing history.
 /// Both destination and transformed source allocations are bounded for interactive use.
-pub fn clone_preview(s: &Session, rect: Rect, map: &crate::presets::clone_source::Mapping, sample_layer: &str) -> Result<photocraft_compose::Buffer> {
+pub fn clone_preview(s: &Session, rect: Rect, map: &crate::presets::clone_source::Mapping, sample_layer: &str) -> Result<oracle_edit_compose::Buffer> {
     clone_preview_periodic(s, rect, map, sample_layer, false)
 }
 
@@ -310,7 +310,7 @@ pub fn clone_preview_periodic(
     map: &crate::presets::clone_source::Mapping,
     sample_layer: &str,
     wrap: bool,
-) -> Result<photocraft_compose::Buffer> {
+) -> Result<oracle_edit_compose::Buffer> {
     if ![map.source.0, map.source.1, map.anchor.0, map.anchor.1].into_iter().chain(map.m).all(|v| v.is_finite() && v.abs() < 1_000_000.0) {
         return Err(bad("clone.preview", "invalid preview mapping"));
     }
@@ -332,7 +332,7 @@ pub fn clone_preview_periodic(
     let which = sample_layers(&json!({"sampleLayer": sample_layer}), "clone.preview")?;
     let region = clone_sample(&d.doc, Some(id), surf, which, rect, map, wrap, "clone.preview")?;
     let px = region.data.chunks_exact(surf.format().channels()).map(|p| to_rgba(&surf.format(), p)).collect();
-    Ok(photocraft_compose::Buffer { rect, px })
+    Ok(oracle_edit_compose::Buffer { rect, px })
 }
 
 /// Result JSON shared by Clone Stamp and Healing Brush: the offset used and where the next stroke
@@ -389,7 +389,7 @@ fn clone_stamp(s: &mut Session, p: &Value) -> Result<Value> {
                 return Ok(l.bounds);
             }
             if flag(p, "wrap", false) {
-                let mut renderer = photocraft_paint::StrokeRenderer::new(&stroke.brush, None, 1.0);
+                let mut renderer = oracle_edit_paint::StrokeRenderer::new(&stroke.brush, None, 1.0);
                 renderer.push(&stroke.points);
                 renderer.finish();
                 let before = surf.clone();
@@ -418,7 +418,7 @@ enum LivePaint {
     History(Surface),
     /// The Pattern Stamp's pattern, tiled from its aligned placement (Impressionist strokes are
     /// laid dab by dab: `pattern_stamp::live_impressionist`).
-    Pattern { tile: std::sync::Arc<photocraft_compose::pattern::Tile>, place: photocraft_compose::pattern::Placement },
+    Pattern { tile: std::sync::Arc<oracle_edit_compose::pattern::Tile>, place: oracle_edit_compose::pattern::Placement },
 }
 
 /// A retouching stroke shown while it is drawn: the dabs so far composited onto a copy of the
@@ -428,7 +428,7 @@ pub struct LiveRetouch {
     /// The active document with the stroke so far.
     pub doc: std::sync::Arc<Document>,
     cmd: String,
-    renderer: photocraft_paint::StrokeRenderer,
+    renderer: oracle_edit_paint::StrokeRenderer,
     pre: std::sync::Arc<Document>,
     pre_surf: Surface,
     id: Option<LayerId>,
@@ -442,7 +442,7 @@ pub struct LiveRetouch {
     /// smoothing catch-up), redrawn on every step as the Brush's live stroke does.
     tail: Rect,
     /// The document and revision the stroke started on.
-    base: (photocraft_doc::DocId, u64),
+    base: (oracle_edit_doc::DocId, u64),
     brush: Box<BrushSettings>,
     /// Every point rendered so far, in order.
     points: Vec<StrokePoint>,
@@ -488,7 +488,7 @@ impl LiveRetouch {
         let (surf, lock) = crate::channel_cmds::target_surface(&mut doc, id, p)?;
         let pre_surf = surf.clone();
         // As `stroke_coverage`, which the commit uses.
-        let renderer = photocraft_paint::StrokeRenderer::new(&stroke.brush, None, 1.0);
+        let renderer = oracle_edit_paint::StrokeRenderer::new(&stroke.brush, None, 1.0);
         let opacity = stroke.brush.opacity;
         let brush = Box::new(stroke.brush.clone());
         let paint = match paint {
@@ -1081,7 +1081,7 @@ impl DabTool {
                 })
             }
             Self::Smudge { strength, finger, max_size } => {
-                let finger_px = finger.map(|fg| photocraft_raster::from_rgba(&fmt, fg));
+                let finger_px = finger.map(|fg| oracle_edit_raster::from_rgba(&fmt, fg));
                 // Premultiplied mixing: transparent pixels carry no colour, so no dark fringes.
                 let mut sm = Smudge::new(strength, finger_px, max_size).with_alpha(alpha_index(&fmt));
                 Box::new(move |work, fp| sm.dab(work, fp))
@@ -1162,7 +1162,7 @@ pub struct LiveDab {
     /// The active document with the stroke so far.
     pub doc: std::sync::Arc<Document>,
     cmd: String,
-    renderer: photocraft_paint::StrokeRenderer,
+    renderer: oracle_edit_paint::StrokeRenderer,
     done: usize,
     effect: DabEffect,
     halo: i32,
@@ -1231,7 +1231,7 @@ impl LiveDab {
         let pre_surf = surf.clone();
         let effect = effect(&pre_surf);
         // `apply_dab_stroke` generates the same dabs (`dabs`: zoom 1, no smoothing scale).
-        let renderer = photocraft_paint::StrokeRenderer::new(&stroke.brush, None, 1.0).record_dabs();
+        let renderer = oracle_edit_paint::StrokeRenderer::new(&stroke.brush, None, 1.0).record_dabs();
         let mut live = Self {
             doc: std::sync::Arc::new(doc),
             cmd: cmd.into(),
@@ -1309,10 +1309,10 @@ impl LiveDab {
         let (surf, _) = crate::channel_cmds::target_surface(std::sync::Arc::make_mut(&mut self.doc), self.id, &self.params)?;
         if !shown.is_empty() {
             let (orig, work) = (Region::read(&self.pre_surf, shown), self.work.read(&self.pre_surf, shown));
-            photocraft_paint::retouch::mix_back(surf, &orig, &work, shown, self.opacity, self.sel.as_ref(), self.lock);
+            oracle_edit_paint::retouch::mix_back(surf, &orig, &work, shown, self.opacity, self.sel.as_ref(), self.lock);
         }
         if let Some((r, work)) = tail {
-            photocraft_paint::retouch::mix_back(surf, &Region::read(&self.pre_surf, r), &work, r, self.opacity, self.sel.as_ref(), self.lock);
+            oracle_edit_paint::retouch::mix_back(surf, &Region::read(&self.pre_surf, r), &work, r, self.opacity, self.sel.as_ref(), self.lock);
             self.tail = r;
         }
         Ok(shown.union(&tail_rect))

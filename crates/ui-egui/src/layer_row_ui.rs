@@ -8,8 +8,8 @@
 //! The rects drawn each frame are recorded ([`recorded`]) for tests and automation.
 
 use egui::{Align2, FontId, Galley, Painter, Pos2, Rect, Sense, Shape, Stroke, pos2, vec2};
-use photocraft_color::BlendMode;
-use photocraft_doc::Layer;
+use oracle_edit_color::BlendMode;
+use oracle_edit_doc::Layer;
 use serde_json::{Value, json};
 use std::sync::Arc;
 
@@ -181,7 +181,7 @@ pub fn indicators(
                 }
             }
             Indicator::SmartFilters => {
-                let enabled = matches!(&l.content, photocraft_doc::LayerContent::Smart(sm) if sm.filters_enabled);
+                let enabled = matches!(&l.content, oracle_edit_doc::LayerContent::Smart(sm) if sm.filters_enabled);
                 crate::smart_ui::paint_badge(painter, r.center(), if enabled { t.icon } else { t.text_faint });
                 ui.interact(r, ui.id().with(("smart-filters-badge", l.id.0)), Sense::hover()).on_hover_text(tl!("Smart Filters"));
             }
@@ -232,7 +232,7 @@ pub fn label(painter: &Painter, x: f32, cy: f32, right: f32, text: &str, font: F
 }
 
 /// Photoshop-style Layers flyout commands. The dock owns tab-group controls, not this menu.
-pub fn panel_menu(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui) {
+pub fn panel_menu(app: &mut crate::OracleEditApp, ui: &mut egui::Ui) {
     use crate::layers_panel_ui::run_menu_command;
     use crate::state::LayersPanelDialog;
 
@@ -270,7 +270,7 @@ pub fn panel_menu(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui) {
             ui.close();
         }
     });
-    // Animation Options control Photoshop's frame-unification buttons. PhotoCraft's Layers
+    // Animation Options control Photoshop's frame-unification buttons. Oracle Edit's Layers
     // panel does not expose those buttons; do not offer nonfunctional toggles.
     ui.add_enabled_ui(false, |ui| {
         ui.menu_button(tl!("Animation Options"), |_ui| {});
@@ -282,7 +282,7 @@ pub fn panel_menu(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui) {
         ui.close();
     }
     ui.separator();
-    // Preserve PhotoCraft's existing group disclosure action when expanding the flyout.
+    // Preserve Oracle Edit's existing group disclosure action when expanding the flyout.
     let can_collapse = app.session.is_enabled("layer.setExpanded");
     if ui.add_enabled(can_collapse, egui::Button::new(tl!("Collapse All Groups"))).clicked() {
         if let Err(e) = app.run("layer.setExpanded", json!({"all": true, "expanded": false})) {

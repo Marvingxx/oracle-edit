@@ -4,7 +4,7 @@
 
 pub mod tiffgen;
 
-use photocraft_codecs::*;
+use oracle_edit_codecs::*;
 
 /// SplitMix64 — tiny deterministic PRNG.
 pub struct Rng(u64);

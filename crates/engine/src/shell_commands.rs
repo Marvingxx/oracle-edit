@@ -1,6 +1,6 @@
 //! The commands the app's shell carries out itself (view, panels, windows: they change no
 //! document), and the tools, as data: what they're called and which keys they have by default.
-//! The shell implements them (`photocraft_ui_egui::menus::UI_COMMANDS`, its `Tool`); the engine
+//! The shell implements them (`oracle_edit_ui_egui::menus::UI_COMMANDS`, its `Tool`); the engine
 //! knows them so a headless session sees every bindable command: Edit › Keyboard Shortcuts'
 //! list, conflicts, `.kys` import and export all work without the UI (the UI is a layer on
 //! top). The app's tests keep these tables equal to its own.
@@ -58,6 +58,7 @@ pub const SHELL_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("window.toggle.brushSettings", "Brush Settings", &["Window"], Some("F5")),
     ("window.toggle.brushes", "Brushes", &["Window"], None),
     ("window.toggle.navigator", "Navigator", &["Window"], None),
+    ("window.oracleLibrary", "Oracle Library", &["Window"], None),
     ("window.toggle.toolbar", "Tools", &["Window"], None),
     // Photoshop's Tab and ⇧Tab: all panels (Tools, options bar and the dock), or only the dock.
     ("window.togglePanels", "Show/Hide All Panels", &[], Some("Tab")),
@@ -83,13 +84,10 @@ pub const SHELL_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("window.theme.softDark", "Soft Dark Theme", &["Window", "Theme"], None),
     ("window.theme.system", "Sync with system", &["Window", "Theme"], None),
     ("edit.search", "Search…", &["Edit"], Some("Cmd+F")),
-    ("help.discord", "Join the ArtCraft Discord…", &["Help"], None),
-    ("help.website", "PhotoCraft Website", &["Help"], None),
-    ("help.artcraftWebsite", "ArtCraft Website", &["Help"], None),
-    ("help.github", "PhotoCraft on GitHub", &["Help"], None),
+    ("help.github", "Oracle Edit on GitHub", &["Help"], None),
     ("help.reportIssue", "Report an Issue…", &["Help"], None),
     ("help.systemInfo", "System Info…", &["Help"], None),
-    ("help.about", "About PhotoCraft", &["Help"], None),
+    ("help.about", "About Oracle Edit", &["Help"], None),
 ];
 
 /// The tools, in toolbar order: shortcut id (`tools.select.<tool>`), Photoshop's name for it

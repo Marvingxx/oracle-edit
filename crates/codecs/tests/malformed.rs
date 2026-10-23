@@ -2,7 +2,7 @@
 
 mod common;
 use common::*;
-use photocraft_codecs::*;
+use oracle_edit_codecs::*;
 use proptest::prelude::*;
 
 fn tight() -> DecodeOptions {

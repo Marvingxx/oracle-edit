@@ -1,5 +1,5 @@
 use super::*;
-use photocraft_color::SampleType;
+use oracle_edit_color::SampleType;
 
 fn session_depth(depth: u32) -> Session {
     let mut s = Session::new();
@@ -870,7 +870,7 @@ fn thumbnail_selection_shape_without_pixel_cache_uses_its_transparency() {
         s.execute("file.new", json!({"width":100,"height":80,"depth":depth,"background":"transparent"})).unwrap();
         let id = s.execute("shape.create", json!({"kind":"rect","rect":[20,10,40,30],"fill":"#cc3333"})).unwrap()["layer"].as_u64().unwrap();
         s.edit("Drop render cache", |doc, _| {
-            let l = doc.layer_mut(photocraft_doc::LayerId(id)).unwrap();
+            let l = doc.layer_mut(oracle_edit_doc::LayerId(id)).unwrap();
             if let LayerContent::Shape(shape) = &mut l.content {
                 shape.cache = None;
             }

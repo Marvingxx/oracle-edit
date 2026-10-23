@@ -21,13 +21,13 @@
 //! which a wide stroke shows as flat facets (#3646). Inside stroke edges and spread / choke keep the
 //! cheaper chamfer. Soft falloffs are two box blurs (a tent).
 
-use photocraft_color::blend::BlendMode;
-use photocraft_doc::Pattern;
-use photocraft_doc::{
+use oracle_edit_color::blend::BlendMode;
+use oracle_edit_doc::Pattern;
+use oracle_edit_doc::{
     Bevel, BevelStyle, BevelTechnique, Contour, Effect, FxPaint, GlobalLight, Glow, GlowSource, GlowTechnique, Gradient, GradientStyle, Layer, Shadow,
     StrokePosition,
 };
-use photocraft_geom::Rect;
+use oracle_edit_geom::Rect;
 
 use crate::pattern::{PREPARED_PATTERN_BYTES, Placement, PreparedPatterns};
 use crate::{Buffer, psblend};
@@ -974,7 +974,7 @@ pub fn ranged_lut(contour: &Contour, range: f32) -> Option<Vec<f32>> {
 /// 15 px in, Photoshop's still 0.19 at 16 px), and dropping it lowers the bad pixels of every
 /// contour oracle (bevel-inner-contour-ramp-peak 25.9 → 21.8 %, -double-ring-aa-r70 25.2 → 21.0 %,
 /// bevel-pillow-chisel-hard-gloss-and-contour 11.4 → 7.2 %). What Range does instead is still open.
-pub fn bevel_contour_lut(c: &photocraft_doc::BevelContour) -> Vec<f32> {
+pub fn bevel_contour_lut(c: &oracle_edit_doc::BevelContour) -> Vec<f32> {
     contour_lut(&c.contour).unwrap_or_else(|| (0..4096).map(|k| k as f32 / 4095.0).collect())
 }
 
@@ -1028,7 +1028,7 @@ fn apply_contour(m: Map, c: &Contour) -> Map {
     }
 }
 
-fn rgb(c: &photocraft_color::Color) -> [f32; 3] {
+fn rgb(c: &oracle_edit_color::Color) -> [f32; 3] {
     c.to_rgb()
 }
 
@@ -1741,7 +1741,7 @@ pub struct FxMaps {
 
 impl FxMaps {
     /// The frame of a gradient stroke `st` of this layer (see [`stroke_frame`]), if built.
-    pub fn stroke_frame(&self, st: &photocraft_doc::StrokeFx) -> Option<Rect> {
+    pub fn stroke_frame(&self, st: &oracle_edit_doc::StrokeFx) -> Option<Rect> {
         self.frames.iter().find(|f| f.0 == stroke_widths(st).1.to_bits()).map(|f| f.1)
     }
 }
@@ -1786,11 +1786,11 @@ impl FxMaps {
 
 /// The distance the two satin copies are offset by. Photoshop draws Distance 0 as 1 px (an
 /// edge band of 2/size, measured in Photoshop 27.11), not as two copies cancelling out.
-pub fn satin_distance(s: &photocraft_doc::effects::Satin) -> f32 {
+pub fn satin_distance(s: &oracle_edit_doc::effects::Satin) -> f32 {
     s.distance.max(1.0)
 }
 
-fn satin_map(shape: &Map, s: &photocraft_doc::effects::Satin) -> Map {
+fn satin_map(shape: &Map, s: &oracle_edit_doc::effects::Satin) -> Map {
     let (dx, dy) = offset(s.angle, satin_distance(s));
     let mut a = shape.shifted(dx, dy, 0.0);
     let mut b = shape.shifted(-dx, -dy, 0.0);
@@ -1844,7 +1844,7 @@ pub(crate) fn build_maps_prepared(
         })
         .collect();
     let has_stroke = items.iter().any(|e| matches!(e, Effect::Stroke(_)));
-    let vector_shape = matches!(layer.content, photocraft_doc::LayerContent::Shape(_));
+    let vector_shape = matches!(layer.content, oracle_edit_doc::LayerContent::Shape(_));
     // A stroke's outer edge keeps the 5 × 5 chamfer while its outside width is under
     // `STROKE_CHAMFER_MAX` — Photoshop matches the chamfer's sub-pixel edge seeding at small
     // offsets — and uses the exact Euclidean transform at or above it, where the chamfer's octagon
@@ -1968,7 +1968,7 @@ pub(crate) fn composite_with_effects_prepared(
         }
     }
     let items: Vec<&Effect> = layer.effects.items.iter().filter(|e| e.enabled()).collect();
-    let vector_shape = matches!(layer.content, photocraft_doc::LayerContent::Shape(_));
+    let vector_shape = matches!(layer.content, oracle_edit_doc::LayerContent::Shape(_));
     // Multiple instances: the first listed is on top, so paint in reverse.
     let rev = || items.iter().copied().enumerate().rev();
 
@@ -2076,7 +2076,7 @@ pub(crate) fn composite_with_effects_prepared(
     }
     // Strokes. Inside parts are painted over the layer (bottom instance first); outside parts
     // are slid beneath it, so the first listed (top) instance is processed first.
-    let strokes: Vec<&photocraft_doc::StrokeFx> = items.iter().filter_map(|e| if let Effect::Stroke(s) = e { Some(s) } else { None }).collect();
+    let strokes: Vec<&oracle_edit_doc::StrokeFx> = items.iter().filter_map(|e| if let Effect::Stroke(s) = e { Some(s) } else { None }).collect();
     let ready = !strokes.is_empty();
     let din = if ready { maps.din.as_ref().map(|a| maps.crop_vec(a, big, 0.0)).unwrap_or_default() } else { Vec::new() };
     // A stroke's outer edge picks the chamfer or the exact field by its width
@@ -2086,7 +2086,7 @@ pub(crate) fn composite_with_effects_prepared(
         if ready { (crop_out(&maps.dout), crop_out(&maps.dout_exact), crop_out(&maps.vdout), crop_out(&maps.vdout_exact)) } else { (None, None, None, None) };
     let widths = stroke_widths;
     // A gradient stroke aligned with the layer spans the stroke's own extent.
-    let frame = |st: &photocraft_doc::StrokeFx| maps.stroke_frame(st).unwrap_or(sb);
+    let frame = |st: &oracle_edit_doc::StrokeFx| maps.stroke_frame(st).unwrap_or(sb);
     for st in strokes.iter().rev().copied() {
         let (in_w, _) = widths(st);
         if in_w <= 0.0 {
@@ -2239,7 +2239,7 @@ pub fn outline_share(cov: f32, l: f32) -> f32 {
 }
 
 /// (inside width, outside width) of a stroke.
-pub fn stroke_widths(st: &photocraft_doc::StrokeFx) -> (f32, f32) {
+pub fn stroke_widths(st: &oracle_edit_doc::StrokeFx) -> (f32, f32) {
     match st.position {
         StrokePosition::Outside => (0.0, st.size),
         StrokePosition::Inside => (st.size, 0.0),
@@ -2524,10 +2524,10 @@ mod tests {
             use_global_light: false,
             gloss_contour: Contour::Linear,
             gloss_anti_alias: false,
-            highlight: photocraft_doc::FxCommon::new(BlendMode::Screen, 0.75),
-            highlight_color: photocraft_color::Color::WHITE,
-            shadow: photocraft_doc::FxCommon::new(BlendMode::Multiply, 0.75),
-            shadow_color: photocraft_color::Color::BLACK,
+            highlight: oracle_edit_doc::FxCommon::new(BlendMode::Screen, 0.75),
+            highlight_color: oracle_edit_color::Color::WHITE,
+            shadow: oracle_edit_doc::FxCommon::new(BlendMode::Multiply, 0.75),
+            shadow_color: oracle_edit_color::Color::BLACK,
             contour: None,
             texture: None,
         }
@@ -3004,7 +3004,7 @@ mod tests {
             }
         }
         let shapes = [aa_disc(97, 83, 30.0), aa_round_rect(131, 77, 9.0, 11.0, 120.0, 66.0, 14.0), aa_bar(90, 130, 60.0, 150.0, 25.0), patchy];
-        let mut sf = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
+        let mut sf = oracle_edit_raster::Surface::new(oracle_edit_color::PixelFormat::RGBA8);
         sf.fill_rect(Rect::new(0, 0, 4, 2), &[0.0, 0.0, 0.0, 1.0]);
         sf.fill_rect(Rect::new(0, 2, 4, 4), &[1.0, 1.0, 1.0, 1.0]);
         let pats = [Pattern::new("stripes", sf, 4, 4)];
@@ -3018,7 +3018,7 @@ mod tests {
                         let mut b = bevel_of(style, technique);
                         (b.size, b.soften) = (size, soften);
                         if textured {
-                            b.texture = Some(photocraft_doc::BevelTexture {
+                            b.texture = Some(oracle_edit_doc::BevelTexture {
                                 name: "stripes".into(),
                                 id: String::new(),
                                 scale: 1.0,
@@ -3109,7 +3109,7 @@ mod tests {
     #[test]
     fn linear_bevel_contour_leaves_the_height_alone_at_any_range() {
         for range in [0.5, 0.7, 1.0] {
-            let lut = bevel_contour_lut(&photocraft_doc::BevelContour { contour: Contour::Linear, range, anti_alias: false });
+            let lut = bevel_contour_lut(&oracle_edit_doc::BevelContour { contour: Contour::Linear, range, anti_alias: false });
             for v in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
                 assert!((lut_at(&lut, v) - v).abs() < 1e-3, "range {range}: {v} -> {}", lut_at(&lut, v));
             }
@@ -3125,11 +3125,11 @@ mod tests {
         // A contour reshapes the profile (here a ramp folded at its middle).
         let mut c = plain.clone();
         let fold = vec![
-            photocraft_doc::adjust::CurvePoint { input: 0.0, output: 0.0 },
-            photocraft_doc::adjust::CurvePoint { input: 0.5, output: 1.0 },
-            photocraft_doc::adjust::CurvePoint { input: 1.0, output: 0.0 },
+            oracle_edit_doc::adjust::CurvePoint { input: 0.0, output: 0.0 },
+            oracle_edit_doc::adjust::CurvePoint { input: 0.5, output: 1.0 },
+            oracle_edit_doc::adjust::CurvePoint { input: 1.0, output: 0.0 },
         ];
-        c.contour = Some(photocraft_doc::BevelContour {
+        c.contour = Some(oracle_edit_doc::BevelContour {
             contour: Contour::Custom { name: "fold".into(), points: fold, corners: vec![] },
             range: 1.0,
             anti_alias: false,
@@ -3138,12 +3138,12 @@ mod tests {
         let diff: f32 = a[1].v.iter().zip(&b[1].v).map(|(x, y)| (x - y).abs()).sum();
         assert!(diff > 5.0, "{diff}");
         // A striped texture lights the flat middle.
-        let mut sf = photocraft_raster::Surface::new(photocraft_color::PixelFormat::RGBA8);
+        let mut sf = oracle_edit_raster::Surface::new(oracle_edit_color::PixelFormat::RGBA8);
         sf.fill_rect(Rect::new(0, 0, 4, 2), &[0.0, 0.0, 0.0, 1.0]);
         sf.fill_rect(Rect::new(0, 2, 4, 4), &[1.0, 1.0, 1.0, 1.0]);
         let pats = [Pattern::new("stripes", sf, 4, 4)];
         let mut t = plain.clone();
-        t.texture = Some(photocraft_doc::BevelTexture {
+        t.texture = Some(oracle_edit_doc::BevelTexture {
             name: "stripes".into(),
             id: String::new(),
             scale: 1.0,
@@ -3162,8 +3162,8 @@ mod tests {
     #[test]
     fn glow_range_stretches_the_contour() {
         let mut g = Glow {
-            common: photocraft_doc::FxCommon::new(BlendMode::Screen, 1.0),
-            paint: FxPaint::Color(photocraft_color::Color::WHITE),
+            common: oracle_edit_doc::FxCommon::new(BlendMode::Screen, 1.0),
+            paint: FxPaint::Color(oracle_edit_color::Color::WHITE),
             technique: GlowTechnique::Softer,
             spread: 0.0,
             size: 10.0,
@@ -3185,8 +3185,8 @@ mod tests {
     #[test]
     fn glows_match_photoshop() {
         let glow = |technique, size: f32, spread: f32, source| Glow {
-            common: photocraft_doc::FxCommon::new(BlendMode::Normal, 1.0),
-            paint: FxPaint::Color(photocraft_color::Color::BLACK),
+            common: oracle_edit_doc::FxCommon::new(BlendMode::Normal, 1.0),
+            paint: FxPaint::Color(oracle_edit_color::Color::BLACK),
             technique,
             spread,
             size,
@@ -3245,9 +3245,9 @@ mod tests {
     fn satin_at_distance_zero_matches_photoshop() {
         // Photoshop 27.11, Satin black 100 %, angle 90°, Linear contour, distance 0, size 5 over a
         // #808080 square: the rows from the top edge read 82, 102, 123, 128.
-        let s = photocraft_doc::effects::Satin {
-            common: photocraft_doc::FxCommon::new(BlendMode::Normal, 1.0),
-            color: photocraft_color::Color::BLACK,
+        let s = oracle_edit_doc::effects::Satin {
+            common: oracle_edit_doc::FxCommon::new(BlendMode::Normal, 1.0),
+            color: oracle_edit_color::Color::BLACK,
             angle: 90.0,
             distance: 0.0,
             size: 5.0,
@@ -3265,8 +3265,8 @@ mod tests {
 
     fn shadow(noise: f32, origin: (i32, i32)) -> Map {
         let s = Shadow {
-            common: photocraft_doc::FxCommon::new(BlendMode::Multiply, 1.0),
-            color: photocraft_color::Color::BLACK,
+            common: oracle_edit_doc::FxCommon::new(BlendMode::Multiply, 1.0),
+            color: oracle_edit_color::Color::BLACK,
             angle: 0.0,
             use_global_light: false,
             distance: 0.0,
@@ -3307,8 +3307,8 @@ mod tests {
     #[test]
     fn glow_noise_follows_the_contour_and_range() {
         let g = |noise: f32| Glow {
-            common: photocraft_doc::FxCommon::new(BlendMode::Screen, 1.0),
-            paint: FxPaint::Color(photocraft_color::Color::WHITE),
+            common: oracle_edit_doc::FxCommon::new(BlendMode::Screen, 1.0),
+            paint: FxPaint::Color(oracle_edit_color::Color::WHITE),
             technique: GlowTechnique::Softer,
             spread: 0.0,
             size: 6.0,
@@ -3336,8 +3336,8 @@ mod tests {
             }
         }
         let g = |noise: f32| Glow {
-            common: photocraft_doc::FxCommon::new(BlendMode::Screen, 1.0),
-            paint: FxPaint::Color(photocraft_color::Color::WHITE),
+            common: oracle_edit_doc::FxCommon::new(BlendMode::Screen, 1.0),
+            paint: FxPaint::Color(oracle_edit_color::Color::WHITE),
             technique: GlowTechnique::Softer,
             spread: 0.0,
             size: 10.0,
@@ -3349,8 +3349,8 @@ mod tests {
             source: GlowSource::Edge,
         };
         let s = |noise: f32| Shadow {
-            common: photocraft_doc::FxCommon::new(BlendMode::Multiply, 1.0),
-            color: photocraft_color::Color::BLACK,
+            common: oracle_edit_doc::FxCommon::new(BlendMode::Multiply, 1.0),
+            color: oracle_edit_color::Color::BLACK,
             angle: 0.0,
             use_global_light: false,
             distance: 0.0,

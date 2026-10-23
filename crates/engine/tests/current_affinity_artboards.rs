@@ -5,10 +5,10 @@
 mod fixture;
 
 use fixture::{Marker, document};
-use photocraft_affinity::synth::Method;
-use photocraft_doc::{LayerContent, LayerId};
-use photocraft_engine::{Session, file_cmds::open_bytes_as};
-use photocraft_geom::{Point, Rect};
+use oracle_edit_affinity::synth::Method;
+use oracle_edit_doc::{LayerContent, LayerId};
+use oracle_edit_engine::{Session, file_cmds::open_bytes_as};
+use oracle_edit_geom::{Point, Rect};
 use serde_json::json;
 
 fn state(s: &Session, id: LayerId) -> (Rect, Point) {

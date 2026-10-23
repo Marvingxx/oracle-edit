@@ -1,50 +1,50 @@
 //! The menu bar from the keyboard (#4988): Alt / F10 focus the bar, Alt+letter opens a menu,
 //! letters run rows, and the shortcuts wait while the bar has the keyboard.
-use crate::PhotocraftApp;
+use crate::OracleEditApp;
 use crate::menu_keys::Keys;
 use crate::menu_nav::{Nav, is_open};
 use egui_kittest::{Harness, kittest::Queryable};
 use serde_json::json;
 
-fn app() -> PhotocraftApp {
-    let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
+fn app() -> OracleEditApp {
+    let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), crate::Services::default());
     app.run("file.new", json!({"width": 64, "height": 48})).unwrap();
     app.sync_views();
     app
 }
 
 /// The menu bar alone, as `menu_nav_tests` drives it.
-fn bar() -> Harness<'static, PhotocraftApp> {
+fn bar() -> Harness<'static, OracleEditApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1280.0, 720.0)).build_ui_state(
         |ui, app| {
             crate::menus::menu_bar(app, ui);
         },
         app(),
     );
-    PhotocraftApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
+    OracleEditApp::setup_context(&h.ctx, crate::theme::ThemeKind::ALL[0]);
     h.run_steps(3);
     h
 }
 
-fn key(h: &mut Harness<'static, PhotocraftApp>, k: egui::Key) {
+fn key(h: &mut Harness<'static, OracleEditApp>, k: egui::Key) {
     h.key_press(k);
     h.run_steps(3);
 }
 
-fn alt_key(h: &mut Harness<'static, PhotocraftApp>, k: egui::Key) {
+fn alt_key(h: &mut Harness<'static, OracleEditApp>, k: egui::Key) {
     h.event_modifiers(egui::Event::Key { key: k, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::ALT }, egui::Modifiers::ALT);
     h.run_steps(3);
 }
 
 /// A tap on Alt: down, then up with nothing else pressed between.
-fn alt_tap(h: &mut Harness<'static, PhotocraftApp>) {
+fn alt_tap(h: &mut Harness<'static, OracleEditApp>) {
     h.key_down(egui::Key::AltLeft);
     h.run_steps(2);
     h.key_up(egui::Key::AltLeft);
     h.run_steps(3);
 }
 
-fn rows(h: &Harness<'static, PhotocraftApp>, level: usize) -> Vec<crate::menu_nav::Row> {
+fn rows(h: &Harness<'static, OracleEditApp>, level: usize) -> Vec<crate::menu_nav::Row> {
     Nav::current(&h.ctx).rows.get(level).cloned().unwrap_or_default()
 }
 
@@ -221,7 +221,7 @@ fn underlined_text_marks_the_mnemonic_once_and_keeps_the_prefix() {
 #[test]
 fn the_shortcuts_wait_while_the_keyboard_is_on_the_bar() {
     let mut h = Harness::builder().with_size(egui::vec2(1280.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        OracleEditApp::setup_context(&cc.egui_ctx, Default::default());
         let mut app = app();
         app.services.native_menu = None;
         app
@@ -247,7 +247,7 @@ fn the_shortcuts_wait_while_the_keyboard_is_on_the_bar() {
 #[test]
 fn a_command_shortcut_leaves_the_bar_and_runs() {
     let mut h = Harness::builder().with_size(egui::vec2(1280.0, 800.0)).with_max_steps(64).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        OracleEditApp::setup_context(&cc.egui_ctx, Default::default());
         let mut app = app();
         app.services.native_menu = None;
         app
@@ -307,9 +307,9 @@ fn every_menu_row_starts_its_label_after_one_checkmark_column() {
 }
 
 /// The whole app (shortcuts, dialogs and the menu bar), for keys other handlers see first.
-fn whole_app() -> Harness<'static, PhotocraftApp> {
+fn whole_app() -> Harness<'static, OracleEditApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1280.0, 800.0)).with_max_steps(16).build_eframe(|cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        OracleEditApp::setup_context(&cc.egui_ctx, Default::default());
         app()
     });
     h.run_steps(4);
@@ -317,18 +317,18 @@ fn whole_app() -> Harness<'static, PhotocraftApp> {
 }
 
 /// `key` pressed and released with `mods` held, as the platform reports a chord.
-fn chord(h: &mut Harness<'static, PhotocraftApp>, key: egui::Key, mods: egui::Modifiers) {
+fn chord(h: &mut Harness<'static, OracleEditApp>, key: egui::Key, mods: egui::Modifiers) {
     h.event_modifiers(egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers: mods }, mods);
     h.event_modifiers(egui::Event::Key { key, physical_key: None, pressed: false, repeat: false, modifiers: mods }, mods);
     h.run_steps(2);
 }
 
-fn alt_down(h: &mut Harness<'static, PhotocraftApp>, mods: egui::Modifiers) {
+fn alt_down(h: &mut Harness<'static, OracleEditApp>, mods: egui::Modifiers) {
     h.event_modifiers(egui::Event::Key { key: egui::Key::AltLeft, physical_key: None, pressed: true, repeat: false, modifiers: mods }, mods);
     h.run_steps(2);
 }
 
-fn alt_up(h: &mut Harness<'static, PhotocraftApp>) {
+fn alt_up(h: &mut Harness<'static, OracleEditApp>) {
     h.event_modifiers(
         egui::Event::Key { key: egui::Key::AltLeft, physical_key: None, pressed: false, repeat: false, modifiers: egui::Modifiers::NONE },
         egui::Modifiers::NONE,

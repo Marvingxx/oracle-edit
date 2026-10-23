@@ -39,7 +39,7 @@ pub(crate) fn checkpoint(purpose: &str) -> Result<()> {
 }
 
 /// Copy a region into an explicitly reserved buffer.
-pub(crate) fn read_region(surface: &photocraft_raster::Surface, area: photocraft_geom::Rect, purpose: &str) -> Result<Vec<f32>> {
+pub(crate) fn read_region(surface: &oracle_edit_raster::Surface, area: oracle_edit_geom::Rect, purpose: &str) -> Result<Vec<f32>> {
     let len = (area.width() as usize)
         .checked_mul(area.height() as usize)
         .and_then(|n| n.checked_mul(surface.channels()))

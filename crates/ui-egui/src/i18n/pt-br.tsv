@@ -12,7 +12,7 @@
 # Clean-room: every entry was written from the plain meaning of the English label using ordinary
 # Brazilian Portuguese computing vocabulary (camada, desfoque, seleção, demarcador ...). No
 # proprietary localisation resource, string table or product UI was consulted or copied; add
-# entries the same way. Product and technology names (PhotoCraft, ArtCraft, OpenType, CMYK, Lab ...)
+# entries the same way. Product and technology names (Oracle Edit, ArtCraft, OpenType, CMYK, Lab ...)
 # stay as they are; the trailing "…" of dialog commands is kept.
 
 # Channel Options and New Spot Channel (#3761)
@@ -774,9 +774,9 @@
 	Timeline	Linha do tempo
 	Tool Presets	Predefinições de ferramentas
 	Tools	Ferramentas
-	About PhotoCraft	Sobre o PhotoCraft
-	PhotoCraft Website	Site do PhotoCraft
-	PhotoCraft on GitHub	PhotoCraft no GitHub
+	About Oracle Edit	Sobre o Oracle Edit
+	Oracle Edit Website	Site do Oracle Edit
+	Oracle Edit on GitHub	Oracle Edit no GitHub
 	ArtCraft Website	Site do ArtCraft
 	Join the ArtCraft Discord…	Participe do Discord do ArtCraft…
 	Report an Issue…	Relatar um problema…
@@ -829,7 +829,7 @@
 	All Caps	Tudo em maiúsculas
 	All Slices	Todas as fatias
 	All User Slices	Todas as fatias do usuário
-	All shortcuts reset to PhotoCraft defaults.	Todos os atalhos foram redefinidos para os padrões do PhotoCraft.
+	All shortcuts reset to Oracle Edit defaults.	Todos os atalhos foram redefinidos para os padrões do Oracle Edit.
 	Alt	Alt
 	Always use pressure for opacity	Sempre usar a pressão para a opacidade
 	Always use pressure for size	Sempre usar a pressão para o tamanho
@@ -1325,9 +1325,9 @@
 	Perspective Warp is not active	A distorção de perspectiva não está ativa
 	Perspective Warp: draw planes along the image's perspective, then switch to Warp	Distorção de perspectiva: desenhe planos seguindo a perspectiva da imagem e depois mude para Deformar
 	Photo Filter	Filtro de fotos
-	PhotoCraft	PhotoCraft
-	PhotoCraft Manages Colors	O PhotoCraft gerencia as cores
-	PhotoCraft — an open-source, native image editor written in Rust.	PhotoCraft — um editor de imagens nativo e de código aberto escrito em Rust.
+	Oracle Edit	Oracle Edit
+	Oracle Edit Manages Colors	O Oracle Edit gerencia as cores
+	Oracle Edit — an open-source, native image editor written in Rust.	Oracle Edit — um editor de imagens nativo e de código aberto escrito em Rust.
 	Pin Depth:	Profundidade do alfinete:
 	Pixel Length:	Comprimento em pixels:
 	Pixels/Centimeter	Pixels/centímetro
@@ -1403,11 +1403,11 @@
 	Import Shortcuts…	Importar atalhos…
 	Load a keyboard shortcut set saved as .kys	Carregar um conjunto de atalhos de teclado salvo como .kys
 	Imported {n} shortcuts from {file}. Click OK to keep them.	{n} atalhos importados de {file}. Clique em OK para mantê-los.
-	{n} commands are not in PhotoCraft.	{n} comandos não existem no PhotoCraft.
+	{n} commands are not in Oracle Edit.	{n} comandos não existem no Oracle Edit.
 	Keyboard shortcuts imported	Atalhos de teclado importados
 	Your keyboard shortcut set {set} is in use here: {n} shortcuts differ from the defaults. Edit › Keyboard Shortcuts shows them; Reset All to Defaults undoes this.	Seu conjunto de atalhos de teclado {set} está em uso aqui: {n} atalhos diferem dos padrões. Editar › Atalhos de teclado os mostra; Redefinir tudo para os padrões desfaz isso.
 	Import keyboard shortcuts?	Importar atalhos de teclado?
-	PhotoCraft found your keyboard shortcut set {set} from another image editor on this computer: {n} of its shortcuts differ from PhotoCraft's. Import it?	O PhotoCraft encontrou neste computador seu conjunto de atalhos de teclado {set} de outro editor de imagens: {n} de seus atalhos diferem dos do PhotoCraft. Importá-lo?
+	Oracle Edit found your keyboard shortcut set {set} from another image editor on this computer: {n} of its shortcuts differ from Oracle Edit's. Import it?	O Oracle Edit encontrou neste computador seu conjunto de atalhos de teclado {set} de outro editor de imagens: {n} de seus atalhos diferem dos do Oracle Edit. Importá-lo?
 	Edit › Keyboard Shortcuts › Reset All to Defaults undoes an import.	Editar › Atalhos de teclado › Redefinir tudo para os padrões desfaz uma importação.
 	Don't Import	Não importar
 	The keyboard shortcut set was not imported: {error}	O conjunto de atalhos de teclado não foi importado: {error}
@@ -1628,7 +1628,7 @@
 	Current Tool	Ferramenta atual
 	Custom Shape Tool	Ferramenta Forma personalizada
 	Cyans	Cianos
-	Default PhotoCraft Size	Tamanho padrão do PhotoCraft
+	Default Oracle Edit Size	Tamanho padrão do Oracle Edit
 	Delete Workspace	Excluir espaço de trabalho
 	Diamond	Diamante
 	Dimensions:	Dimensões:
@@ -1739,7 +1739,7 @@
 	Pen Tool	Ferramenta Caneta
 	Convert Point Tool	Ferramenta Converter ponto
 	Photo	Foto
-	PhotoCraft website	Site do PhotoCraft
+	Oracle Edit website	Site do Oracle Edit
 	Picas	Paicas
 	Pillow Emboss	Entalhe almofadado
 	Pixel Replacement	Substituição de pixels
@@ -2001,6 +2001,7 @@
 	Touch gestures	Gestos de toque
 	Transparency & Gamut	Transparência e gama
 	Type units	Unidades de texto
+	UI font	Fonte da interface
 	UI font size	Tamanho da fonte da interface
 	UI scale	Escala da interface
 	Units & Rulers	Unidades e réguas
@@ -2066,7 +2067,7 @@
 	System Info	Informações do sistema
 	More panels	Mais painéis
 	More documents	Mais documentos
-	These settings aren't available in PhotoCraft yet.	Estas configurações ainda não estão disponíveis no PhotoCraft.
+	These settings aren't available in Oracle Edit yet.	Estas configurações ainda não estão disponíveis no Oracle Edit.
 	Graphics	Gráficos
 	Reset GPU Backend	Redefinir backend da GPU
 	Applies at next launch.	Aplica-se na próxima inicialização.
@@ -2651,8 +2652,8 @@
 	Overprint	Superimposição
 	Native file drag-and-drop is unavailable	Arrastar e soltar arquivos não está disponível
 	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or copy the image in your file manager and paste it with {paste}.	O recurso nativo de arrastar e soltar arquivos ainda não funciona no Wayland. Use Arquivo › Abrir ou copie a imagem no gerenciador de arquivos e cole-a com {paste}.
-	To drop files, start PhotoCraft under XWayland: `{command}`	Para soltar arquivos, execute o PhotoCraft no XWayland: `{command}`
-	Or set Preferences › Performance › Linux display server to X11: PhotoCraft then always starts under XWayland.	Ou defina Preferências › Desempenho › Servidor de exibição Linux como X11: o PhotoCraft passa a iniciar sempre no XWayland.
+	To drop files, start Oracle Edit under XWayland: `{command}`	Para soltar arquivos, execute o Oracle Edit no XWayland: `{command}`
+	Or set Preferences › Performance › Linux display server to X11: Oracle Edit then always starts under XWayland.	Ou defina Preferências › Desempenho › Servidor de exibição Linux como X11: o Oracle Edit passa a iniciar sempre no XWayland.
 	Edit › Paste	Editar › Colar
 	Use File › Open, or paste a copied image with {paste}.	Use Arquivo › Abrir ou cole uma imagem copiada com {paste}.
 	Mixer Brush Tool	Ferramenta Pincel misturador
@@ -2668,7 +2669,7 @@
 	Automatic uses GPU acceleration when available and falls back to CPU rendering on errors.	O modo automático usa a aceleração por GPU quando disponível e volta para a renderização por CPU em caso de erros.
 	Switched to CPU rendering	Renderização alterada para CPU
 	GPU acceleration could not continue. Your documents are unchanged.	A aceleração por GPU não pôde continuar. Seus documentos não foram alterados.
-	PhotoCraft is using the CPU image compositor. The window may still use your graphics adapter.	O PhotoCraft está usando o compositor de imagens da CPU. A janela ainda pode usar seu adaptador gráfico.
+	Oracle Edit is using the CPU image compositor. The window may still use your graphics adapter.	O Oracle Edit está usando o compositor de imagens da CPU. A janela ainda pode usar seu adaptador gráfico.
 	Retry GPU requires a restart. Save your work first.	Tentar a GPU novamente exige reiniciar. Salve seu trabalho primeiro.
 	Keep Using CPU	Continuar usando a CPU
 	Retry GPU	Tentar a GPU novamente
@@ -2914,7 +2915,7 @@ fontWeight	Italic	Itálico
 	Color to Alpha…	Cor para alfa…
 	Transparency Threshold	Limiar de transparência
 	Opacity Threshold	Limiar de opacidade
-	PhotoCraft — Screen Color Picker	PhotoCraft — Seletor de cor da tela
+	Oracle Edit — Screen Color Picker	Oracle Edit — Seletor de cor da tela
 
 	Rasterize svg groups deeper than	Rasterizar grupos SVG além desta profundidade
 	0 turns this threshold off; SVG groups nested deeper than 100 levels are always rasterized.	0 desativa este limite; grupos SVG aninhados em mais de 100 níveis são sempre rasterizados.
@@ -3304,7 +3305,7 @@ layerLabel	No Color	Sem cor
 	Restart Required	Reinicialização necessária
 	Restart	Reiniciar
 	Quit	Sair
-	Quit PhotoCraft	Sair do PhotoCraft
+	Quit Oracle Edit	Sair do Oracle Edit
 	Close Window	Fechar janela
 	New Window	Nova janela
 	Open Image	Abrir imagem
@@ -3808,7 +3809,7 @@ layerLabel	No Color	Sem cor
 	Mezzotint	Meia-tinta
 	Mosaic	Mosaico
 	Motion Blur	Desfoque de movimento
-	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or run PhotoCraft under XWayland with `WAYLAND_DISPLAY= photocraft`.	Arrastar e soltar arquivos nativamente ainda não é suportado no Wayland. Use Arquivo › Abrir ou execute o PhotoCraft sob XWayland com `WAYLAND_DISPLAY= photocraft`.
+	Native file drag-and-drop is not supported on Wayland yet. Use File › Open, or run Oracle Edit under XWayland with `WAYLAND_DISPLAY= oracle-edit`.	Arrastar e soltar arquivos nativamente ainda não é suportado no Wayland. Use Arquivo › Abrir ou execute o Oracle Edit sob XWayland com `WAYLAND_DISPLAY= oracle-edit`.
 	Neon Glow	Brilho neon
 	New Guide Layout	Novo layout de guias
 	New Video Layer from File	Nova camada de vídeo a partir de arquivo
@@ -3968,7 +3969,7 @@ layerLabel	No Color	Sem cor
 	{name} (Photoshop)	{name} (Photoshop)
 	{message} ({note})	{message} ({note})
 @plural	Loaded {n} action from {file}|Loaded {n} actions from {file}	{n} ação carregada de {file}|{n} ações carregadas de {file}
-@plural	{n} step has no PhotoCraft equivalent yet|{n} steps have no PhotoCraft equivalent yet	{n} etapa ainda não tem equivalente no PhotoCraft|{n} etapas ainda não têm equivalente no PhotoCraft
+@plural	{n} step has no Oracle Edit equivalent yet|{n} steps have no Oracle Edit equivalent yet	{n} etapa ainda não tem equivalente no Oracle Edit|{n} etapas ainda não têm equivalente no Oracle Edit
 @plural	Saved {n} action to {file}|Saved {n} actions to {file}	{n} ação salva em {file}|{n} ações salvas em {file}
 @plural	{n} step with no Photoshop equivalent left out|{n} steps with no Photoshop equivalent left out	{n} etapa sem equivalente no Photoshop foi omitida|{n} etapas sem equivalente no Photoshop foram omitidas
 
@@ -4023,12 +4024,12 @@ layerLabel	No Color	Sem cor
 	Bicubic Smoother	Bicúbica mais suave
 	Bicubic Sharper	Bicúbica mais nítida
 	Pasting from other apps is unavailable	Colar de outros aplicativos não está disponível
-	PhotoCraft can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.	O PhotoCraft não consegue acessar a área de transferência do sistema nesta sessão. No Wayland, a sandbox do Flatpak oculta o protocolo pelo qual as imagens de outros aplicativos são lidas.
-	To paste from other apps, start PhotoCraft under XWayland: `{command}`	Para colar de outros aplicativos, execute o PhotoCraft no XWayland: `{command}`
-	Nothing to paste: PhotoCraft can't read the system clipboard here	Nada para colar: o PhotoCraft não consegue ler a área de transferência do sistema aqui
+	Oracle Edit can't reach the system clipboard in this session. On Wayland, a Flatpak sandbox hides the protocol that images from other apps are read through.	O Oracle Edit não consegue acessar a área de transferência do sistema nesta sessão. No Wayland, a sandbox do Flatpak oculta o protocolo pelo qual as imagens de outros aplicativos são lidas.
+	To paste from other apps, start Oracle Edit under XWayland: `{command}`	Para colar de outros aplicativos, execute o Oracle Edit no XWayland: `{command}`
+	Nothing to paste: Oracle Edit can't read the system clipboard here	Nada para colar: o Oracle Edit não consegue ler a área de transferência do sistema aqui
 	Delete this set	Excluir este conjunto
 	New Set…	Novo conjunto…
-	PhotoCraft Defaults	Padrões do PhotoCraft
+	Oracle Edit Defaults	Padrões do Oracle Edit
 	Save a list of these shortcuts as a web page	Salvar uma lista destes atalhos como página da web
 	Save the changes to this set	Salvar as alterações neste conjunto
 	Save these shortcuts as a .kys file	Salvar estes atalhos como arquivo .kys
@@ -4098,3 +4099,7 @@ layerLabel	No Color	Sem cor
 
 # Graphics Adapter preference (#1885)
 	GPU adapter	Adaptador de GPU
+# Oracle: the asset library and the interface fonts (font names kept)
+	Oracle Library	Biblioteca Oracle
+	Lexend	Lexend
+	Inter	Inter

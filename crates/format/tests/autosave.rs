@@ -4,9 +4,9 @@ mod common;
 use std::sync::Arc;
 
 use common::*;
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{DocId, Document};
-use photocraft_format::*;
+use oracle_edit_color::{ColorMode, SampleType};
+use oracle_edit_doc::{DocId, Document};
+use oracle_edit_format::*;
 
 #[test]
 fn autosave_then_recover() {

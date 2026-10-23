@@ -3,10 +3,10 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-use photocraft_doc::{DocId, Document, LayerContent, LayerId};
-use photocraft_geom::Rect;
+use oracle_edit_doc::{DocId, Document, LayerContent, LayerId};
+use oracle_edit_geom::Rect;
 
-use crate::PhotocraftApp;
+use crate::OracleEditApp;
 
 const TAG: u64 = 1 << 60;
 
@@ -23,7 +23,7 @@ pub struct TypeFontPreview {
     areas: VecDeque<(u64, Rect)>,
 }
 
-pub(crate) fn follow_hover(app: &mut PhotocraftApp, ctx: &egui::Context) {
+pub(crate) fn follow_hover(app: &mut OracleEditApp, ctx: &egui::Context) {
     let hover_id = egui::Id::new("type-font-hover");
     let family = ctx.data_mut(|d| {
         let family = d.get_temp::<String>(hover_id);
@@ -37,14 +37,14 @@ pub(crate) fn follow_hover(app: &mut PhotocraftApp, ctx: &egui::Context) {
     }
 }
 
-pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Document>, u64)> {
+pub(crate) fn display_doc(app: &mut OracleEditApp, idx: usize) -> Option<(Arc<Document>, u64)> {
     let p = app.type_font_preview.as_ref()?.clone();
     let family = p.family.as_deref()?;
     let st = app.session.documents().get(idx)?;
     if st.doc.id != p.document || st.revision != p.revision {
         return None;
     }
-    if !photocraft_text::shared().lock().unwrap_or_else(|e| e.into_inner()).fonts.has_family(family) {
+    if !oracle_edit_text::shared().lock().unwrap_or_else(|e| e.into_inner()).fonts.has_family(family) {
         return None;
     }
     if let Some(shown) = &p.shown {
@@ -61,19 +61,19 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
     {
         let l = doc.layer_mut(layer)?;
         if let LayerContent::Text(t) = &mut l.content {
-            let (start, end) = range.map_or((0, t.text.len()), |[a, b]| (photocraft_text::byte_index(&t.text, a), photocraft_text::byte_index(&t.text, b)));
-            photocraft_engine::type_cmds::style_range(t, start, end, &|style| {
+            let (start, end) = range.map_or((0, t.text.len()), |[a, b]| (oracle_edit_text::byte_index(&t.text, a), oracle_edit_text::byte_index(&t.text, b)));
+            oracle_edit_engine::type_cmds::style_range(t, start, end, &|style| {
                 style.font_family.clone_from(&family);
                 style.postscript_name = None;
             });
-            photocraft_engine::type_cmds::refresh(&original_doc, t);
+            oracle_edit_engine::type_cmds::refresh(&original_doc, t);
         } else {
             return None;
         }
     }
 
     let area = doc.layer(layer)?.surface().map_or(Rect::EMPTY, |surface| surface.tile_bounds());
-    let shown = Arc::new(photocraft_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
+    let shown = Arc::new(oracle_edit_engine::mode_cmds::display_document(&doc).unwrap_or(doc));
     let key = p.key;
     if let Some(p) = app.type_font_preview.as_mut() {
         if p.areas.len() >= 128 {
@@ -85,7 +85,7 @@ pub(crate) fn display_doc(app: &mut PhotocraftApp, idx: usize) -> Option<(Arc<Do
     Some((shown, key))
 }
 
-pub(crate) fn set(app: &mut PhotocraftApp, family: String) {
+pub(crate) fn set(app: &mut OracleEditApp, family: String) {
     let Some((layer, range)) = crate::type_tool::target(app) else {
         clear(app);
         return;
@@ -99,7 +99,7 @@ pub(crate) fn set(app: &mut PhotocraftApp, family: String) {
         clear(app);
         return;
     }
-    photocraft_text::served::request(&family);
+    oracle_edit_text::served::request(&family);
     if app.type_font_preview.as_ref().is_some_and(|p| {
         p.family.as_deref() == Some(family.as_str()) && p.document == st.doc.id && p.revision == st.revision && p.layer == layer && p.range == range
     }) {
@@ -114,14 +114,14 @@ pub(crate) fn set(app: &mut PhotocraftApp, family: String) {
     app.type_font_preview = Some(TypeFontPreview { document: doc_id, revision, layer, range, family: Some(family), shown: None, key, original_area, areas });
 }
 
-pub(crate) fn clear(app: &mut PhotocraftApp) {
+pub(crate) fn clear(app: &mut OracleEditApp) {
     if let Some(p) = app.type_font_preview.as_mut() {
         p.family = None;
         p.shown = None;
     }
 }
 
-pub(crate) fn damage(app: &PhotocraftApp, doc: DocId, revision: u64, before: u64, after: u64) -> Option<Rect> {
+pub(crate) fn damage(app: &OracleEditApp, doc: DocId, revision: u64, before: u64, after: u64) -> Option<Rect> {
     if before == after {
         return None;
     }

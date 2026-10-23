@@ -4,17 +4,17 @@
 use egui::{Modifiers, PointerButton, Pos2, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use photocraft_doc::{Effect, LayerContent};
+use oracle_edit_doc::{Effect, LayerContent};
 use serde_json::json;
 
 use super::{Indicator, RowRects, layout, recorded};
-use crate::PhotocraftApp;
+use crate::OracleEditApp;
 
 const LONG: &str = "Button / Primary / Hover state — a very long descriptive layer name 背景のテクスチャ that keeps going";
 
 /// Long-named layers with every indicator, nested four groups deep.
-fn busy() -> photocraft_engine::Session {
-    let mut s = photocraft_engine::Session::new();
+fn busy() -> oracle_edit_engine::Session {
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let mut prev = None;
     for depth in 0..4 {
@@ -42,10 +42,10 @@ fn busy() -> photocraft_engine::Session {
     s
 }
 
-fn harness(session: photocraft_engine::Session, ppp: f32, theme: &str, dock_width: f32) -> Harness<'static, PhotocraftApp> {
+fn harness(session: oracle_edit_engine::Session, ppp: f32, theme: &str, dock_width: f32) -> Harness<'static, OracleEditApp> {
     let mut h = Harness::builder().with_size(vec2(1440.0, 1000.0)).with_pixels_per_point(ppp).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        PhotocraftApp::new(session, crate::Services::default())
+        OracleEditApp::setup_context(&cc.egui_ctx, Default::default());
+        OracleEditApp::new(session, crate::Services::default())
     });
     let ctx = h.ctx.clone();
     let (req, _rx) = crate::control::ControlRequest::new(
@@ -108,7 +108,7 @@ fn long_names_never_run_under_the_indicators() {
     }
 }
 
-fn click(h: &mut Harness<'_, PhotocraftApp>, at: Pos2) {
+fn click(h: &mut Harness<'_, OracleEditApp>, at: Pos2) {
     h.hover_at(at);
     h.run_steps(1);
     h.event(egui::Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
@@ -121,7 +121,7 @@ fn click(h: &mut Harness<'_, PhotocraftApp>, at: Pos2) {
 fn the_fx_triangle_hides_and_shows_the_effects_rows() {
     let mut h = harness(busy(), 1.0, "promedium", 290.0);
     let top = h.state().session.active().unwrap().doc.layers.last().unwrap().clone();
-    let rows = |h: &Harness<'_, PhotocraftApp>| recorded(&h.ctx).iter().map(|r| r.row.top()).collect::<Vec<_>>();
+    let rows = |h: &Harness<'_, OracleEditApp>| recorded(&h.ctx).iter().map(|r| r.row.top()).collect::<Vec<_>>();
     let before = rows(&h);
     let label = format!("Collapse effects {}", top.name);
     let p = h.get_by_label(&label).rect().center();
@@ -139,7 +139,7 @@ fn the_fx_triangle_hides_and_shows_the_effects_rows() {
 
 #[test]
 fn a_configured_but_disabled_effect_stays_discoverable_in_the_panel() {
-    let mut session = photocraft_engine::Session::new();
+    let mut session = oracle_edit_engine::Session::new();
     session.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let layer_id = session.execute("layer.new.layer", json!({"name": "Styled"})).unwrap()["layer"].as_u64().unwrap();
     session.execute("layer.layerStyle.dropShadow", json!({"layer": layer_id})).unwrap();
@@ -159,23 +159,23 @@ fn a_configured_but_disabled_effect_stays_discoverable_in_the_panel() {
 /// never opens the Layer Style dialog.
 #[test]
 fn the_eyes_on_the_effects_rows_hide_and_show_effects() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let id = s.execute("layer.new.layer", json!({"name": "Styled"})).unwrap()["layer"].as_u64().unwrap();
     s.execute("layer.layerStyle.dropShadow", json!({"layer": id})).unwrap();
     s.execute("layer.layerStyle.colorOverlay", json!({"layer": id})).unwrap();
     let mut h = harness(s, 1.0, "promedium", 290.0);
     // (the whole list is on, each effect is on).
-    let fx = |h: &Harness<'_, PhotocraftApp>| {
-        let fx = &h.state().session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().effects;
+    let fx = |h: &Harness<'_, OracleEditApp>| {
+        let fx = &h.state().session.active().unwrap().doc.layer(oracle_edit_doc::LayerId(id)).unwrap().effects;
         (fx.enabled, fx.items.iter().map(Effect::enabled).collect::<Vec<_>>())
     };
-    let steps = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().history.past_len();
-    let eye = |h: &Harness<'_, PhotocraftApp>, row: &str| {
+    let steps = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().history.past_len();
+    let eye = |h: &Harness<'_, OracleEditApp>, row: &str| {
         let r = h.get_by_label(row).rect();
         pos2(r.left() + 45.0, r.center().y)
     };
-    let (settings, n) = (h.state().session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().effects.items.clone(), steps(&h));
+    let (settings, n) = (h.state().session.active().unwrap().doc.layer(oracle_edit_doc::LayerId(id)).unwrap().effects.items.clone(), steps(&h));
     assert_eq!(fx(&h), (true, vec![true, true]));
 
     let p = eye(&h, "Color Overlay");
@@ -196,12 +196,12 @@ fn the_eyes_on_the_effects_rows_hide_and_show_effects() {
     click(&mut h, p);
     assert_eq!(fx(&h), (true, vec![true, true]));
 
-    assert_eq!(h.state().session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().effects.items, settings, "settings survive");
+    assert_eq!(h.state().session.active().unwrap().doc.layer(oracle_edit_doc::LayerId(id)).unwrap().effects.items, settings, "settings survive");
     assert_eq!(steps(&h), n + 4);
     assert!(h.state().ui.dialogs.is_empty(), "an eye click never opens the Layer Style dialog");
 }
 
-fn groups_open(s: &photocraft_engine::Session) -> Vec<bool> {
+fn groups_open(s: &oracle_edit_engine::Session) -> Vec<bool> {
     s.active().unwrap().doc.walk().into_iter().filter_map(|(_, _, l)| if let LayerContent::Group(g) = &l.content { Some(g.expanded) } else { None }).collect()
 }
 
@@ -220,9 +220,9 @@ fn collapse_all_groups_from_the_panel_menu_and_it_is_saved() {
     // Collapsed state is document data: it survives a PSD and a .pcraft round trip.
     let doc = (*h.state().session.active().unwrap().doc).clone();
     for name in ["c.psd", "c.pcraft"] {
-        let bytes = photocraft_io::export(&doc, name, &Default::default()).unwrap().bytes;
-        let back = photocraft_io::import(name, &bytes).unwrap().document;
-        let mut s = photocraft_engine::Session::new();
+        let bytes = oracle_edit_io::export(&doc, name, &Default::default()).unwrap().bytes;
+        let back = oracle_edit_io::import(name, &bytes).unwrap().document;
+        let mut s = oracle_edit_engine::Session::new();
         s.add_document(back, None);
         assert!(groups_open(&s).iter().all(|o| !o), "{name}: groups stay closed");
     }
@@ -234,15 +234,15 @@ fn collapse_all_groups_from_the_panel_menu_and_it_is_saved() {
 #[test]
 fn dragging_down_the_eyes_sweeps_visibility_without_reordering() {
     for moves in [10, 1] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = oracle_edit_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         for i in 0..4 {
             s.execute("layer.new.layer", json!({"name": format!("L{i}")})).unwrap();
         }
         let mut h = harness(s, 1.0, "promedium", 290.0);
-        let order = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.id).collect::<Vec<_>>();
-        let visible = |h: &Harness<'_, PhotocraftApp>, id: u64| h.state().session.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().visible;
-        let steps = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().history.past_len();
+        let order = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.id).collect::<Vec<_>>();
+        let visible = |h: &Harness<'_, OracleEditApp>, id: u64| h.state().session.active().unwrap().doc.layer(oracle_edit_doc::LayerId(id)).unwrap().visible;
+        let steps = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().history.past_len();
         let (before, steps_before) = (order(&h), steps(&h));
         // Rows top to bottom: L3, L2, L1, L0, Background.
         let rows = recorded(&h.ctx);
@@ -276,14 +276,14 @@ fn dragging_down_the_eyes_sweeps_visibility_without_reordering() {
 /// grouped, on Delete it is deleted; a row outside the selection goes alone.
 #[test]
 fn dropping_a_row_on_the_footer_buttons_duplicates_groups_and_deletes() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     for i in 0..3 {
         s.execute("layer.new.layer", json!({"name": format!("L{i}")})).unwrap();
     }
     let mut h = harness(s, 1.0, "promedium", 290.0);
-    let names = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
-    let drag_to = |h: &mut Harness<'static, PhotocraftApp>, row: usize, label: &str| {
+    let names = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+    let drag_to = |h: &mut Harness<'static, OracleEditApp>, row: usize, label: &str| {
         let from = recorded(&h.ctx)[row].row.center();
         let to = h.get_by_label(label).rect().center();
         h.event(egui::Event::PointerMoved(from));
@@ -318,16 +318,16 @@ fn dropping_a_row_on_the_footer_buttons_duplicates_groups_and_deletes() {
 /// step) and leaves the original in place; without ⌥ the same drag moves it.
 #[test]
 fn alt_dragging_a_row_drops_a_copy_and_a_plain_drag_moves() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     for i in 0..3 {
         s.execute("layer.new.layer", json!({"name": format!("L{i}")})).unwrap();
     }
     let mut h = harness(s, 1.0, "promedium", 290.0);
-    let names = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
-    let steps = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().history.past_len();
+    let names = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+    let steps = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().history.past_len();
     // Drag row `from` to the upper quarter of row `to` (= above it), with `release` held on drop.
-    let drag = |h: &mut Harness<'static, PhotocraftApp>, from: usize, to: usize, release: Modifiers| {
+    let drag = |h: &mut Harness<'static, OracleEditApp>, from: usize, to: usize, release: Modifiers| {
         let rows = recorded(&h.ctx);
         let a = rows[from].row.center();
         let b = pos2(rows[to].row.center().x, rows[to].row.top() + rows[to].row.height() * 0.25);
@@ -363,7 +363,7 @@ fn alt_dragging_a_row_drops_a_copy_and_a_plain_drag_moves() {
 
 /// #1721: a press-move-release from `from` to `to`, with `release` held only when the row is
 /// dropped.
-fn drag_from_to(h: &mut Harness<'static, PhotocraftApp>, from: Pos2, to: Pos2, release: Modifiers) {
+fn drag_from_to(h: &mut Harness<'static, OracleEditApp>, from: Pos2, to: Pos2, release: Modifiers) {
     h.event(egui::Event::PointerMoved(from));
     h.run_steps(1);
     h.event(egui::Event::PointerButton { pos: from, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
@@ -385,11 +385,11 @@ fn drag_from_to(h: &mut Harness<'static, PhotocraftApp>, from: Pos2, to: Pos2, r
 /// nothing.
 #[test]
 fn alt_dragging_the_only_layer_drops_a_copy_on_itself() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let mut h = harness(s, 1.0, "promedium", 290.0);
-    let names = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
-    let steps = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().history.past_len();
+    let names = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+    let steps = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().history.past_len();
     assert_eq!(names(&h), ["Background"]);
     let row = recorded(&h.ctx)[0].row;
     let from = pos2(row.center().x, row.bottom() - 4.0);
@@ -410,7 +410,7 @@ fn alt_dragging_the_only_layer_drops_a_copy_on_itself() {
 /// the layer to the very bottom of the stack, a plain drag moves it there.
 #[test]
 fn dropping_below_the_bottom_row_lands_at_the_bottom_of_the_stack() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     // Nothing can go below a Background (#2626), so the bottom layer is a normal one here.
     s.execute("layer.new.layerFromBackground", json!({})).unwrap();
@@ -418,7 +418,7 @@ fn dropping_below_the_bottom_row_lands_at_the_bottom_of_the_stack() {
         s.execute("layer.new.layer", json!({"name": format!("L{i}")})).unwrap();
     }
     let mut h = harness(s, 1.0, "promedium", 290.0);
-    let names = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+    let names = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().doc.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
     // Rows top to bottom: L1, L0, Layer 0. The empty space starts under Layer 0.
     let top = recorded(&h.ctx)[0].row.center();
     let bottom = recorded(&h.ctx)[2].row;
@@ -439,7 +439,7 @@ fn dropping_below_the_bottom_row_lands_at_the_bottom_of_the_stack() {
 #[test]
 fn the_footer_is_a_bar_along_the_panel_bottom_with_its_buttons_centred() {
     for theme in ["promedium", "studio"] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = oracle_edit_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         s.execute("layer.new.layer", json!({})).unwrap();
         let h = harness(s, 1.0, theme, 290.0);
@@ -459,15 +459,15 @@ fn the_footer_is_a_bar_along_the_panel_bottom_with_its_buttons_centred() {
 /// click leaves the menu open, and a release on nothing adds nothing.
 #[test]
 fn press_drag_release_on_the_adjustment_button_adds_that_layer() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let mut h = harness(s, 1.0, "promedium", 290.0);
-    let count = |h: &Harness<'_, PhotocraftApp>| h.state().session.active().unwrap().doc.layers.len();
-    let press = |h: &mut Harness<'static, PhotocraftApp>, pos: Pos2, pressed: bool| {
+    let count = |h: &Harness<'_, OracleEditApp>| h.state().session.active().unwrap().doc.layers.len();
+    let press = |h: &mut Harness<'static, OracleEditApp>, pos: Pos2, pressed: bool| {
         h.event(egui::Event::PointerButton { pos, button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
         h.run_steps(2);
     };
-    let drag = |h: &mut Harness<'static, PhotocraftApp>, from: Pos2, to: Pos2| {
+    let drag = |h: &mut Harness<'static, OracleEditApp>, from: Pos2, to: Pos2| {
         for k in 1..=8 {
             h.event(egui::Event::PointerMoved(from + (to - from) * (k as f32 / 8.0)));
             h.run_steps(1);
@@ -515,12 +515,12 @@ fn press_drag_release_on_the_adjustment_button_adds_that_layer() {
 /// Style on Drop Shadow.
 #[test]
 fn press_drag_release_on_the_fx_button_opens_that_style() {
-    let mut s = photocraft_engine::Session::new();
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     s.execute("layer.new.layer", json!({})).unwrap();
     let mut h = harness(s, 1.0, "promedium", 290.0);
     let styles =
-        |h: &Harness<'_, PhotocraftApp>| h.state().ui.dialogs.iter().filter(|d| d.kind == crate::state::DialogKind::LayerStyle).cloned().collect::<Vec<_>>();
+        |h: &Harness<'_, OracleEditApp>| h.state().ui.dialogs.iter().filter(|d| d.kind == crate::state::DialogKind::LayerStyle).cloned().collect::<Vec<_>>();
     let button = h.get_by_label("Add a layer style").rect().center();
     h.event(egui::Event::PointerMoved(button));
     h.run_steps(1);
@@ -544,7 +544,7 @@ fn press_drag_release_on_the_fx_button_opens_that_style() {
 #[test]
 fn panel_thumbnail_sizes_change_real_row_geometry() {
     use crate::state::LayerThumbnailSize;
-    let mut session = photocraft_engine::Session::new();
+    let mut session = oracle_edit_engine::Session::new();
     session.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     session.execute("layer.new.layer", json!({"name": "Photo"})).unwrap();
     session.execute("edit.fill", json!({"color": "#9acb32"})).unwrap();
@@ -569,8 +569,8 @@ fn panel_thumbnail_sizes_change_real_row_geometry() {
 }
 
 /// One layer per lock, each with only that lock set (#4158).
-fn one_lock_each() -> (photocraft_engine::Session, Vec<(&'static str, u64)>) {
-    let mut s = photocraft_engine::Session::new();
+fn one_lock_each() -> (oracle_edit_engine::Session, Vec<(&'static str, u64)>) {
+    let mut s = oracle_edit_engine::Session::new();
     s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
     let mut ids = Vec::new();
     for key in ["transparency", "pixels", "position", "artboard", "all"] {
@@ -604,7 +604,7 @@ fn the_studio_lock_button_shows_every_lock() {
     // #4158: the simple themes' lock button drew "unlocked" for a pixels or artboard lock, though
     // clicking it then unlocked the layer.
     for key in ["transparency", "pixels", "position", "artboard", "all"] {
-        let mut s = photocraft_engine::Session::new();
+        let mut s = oracle_edit_engine::Session::new();
         s.execute("file.new", json!({"width": 64, "height": 48})).unwrap();
         s.execute("layer.new.layer", json!({"name": key})).unwrap();
         s.execute("layer.setProps", json!({"locks": {key: true}})).unwrap();
@@ -621,7 +621,7 @@ fn clicking_the_lock_icon_on_a_row_unlocks_the_layer() {
     let bg = s.active().unwrap().doc.background().unwrap().id;
     let mut h = harness(s, 1.0, "promedium", 290.0);
     let active = h.state().session.active().unwrap().active_layer;
-    let lock_icon = |h: &Harness<'_, PhotocraftApp>, id: u64| {
+    let lock_icon = |h: &Harness<'_, OracleEditApp>, id: u64| {
         let row = recorded(&h.ctx).into_iter().find(|r| r.layer == id).unwrap();
         row.indicators.into_iter().find(|(k, _)| *k == Indicator::Lock).unwrap_or_else(|| panic!("lock icon on {id}")).1.center()
     };
@@ -629,7 +629,7 @@ fn clicking_the_lock_icon_on_a_row_unlocks_the_layer() {
         let p = lock_icon(&h, id);
         click(&mut h, p);
         let d = h.state().session.active().unwrap();
-        assert!(!d.doc.layer(photocraft_doc::LayerId(id)).unwrap().locks.any(), "{key}: unlocked");
+        assert!(!d.doc.layer(oracle_edit_doc::LayerId(id)).unwrap().locks.any(), "{key}: unlocked");
         assert_eq!(d.active_layer, active, "{key}: the lock icon doesn't select");
     }
     let p = lock_icon(&h, bg.0);

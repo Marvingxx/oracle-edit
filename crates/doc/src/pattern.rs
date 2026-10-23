@@ -1,9 +1,9 @@
 //! Patterns: tiles used by Pattern Overlay, pattern fill layers, pattern strokes, Edit › Fill
-//! and brush textures. Pure data; rendering lives in `photocraft-compose`, the PSD mapping
-//! (`Patt`/`Pat2`/`Pat3` global blocks) in `photocraft-io`.
+//! and brush textures. Pure data; rendering lives in `oracle-edit-compose`, the PSD mapping
+//! (`Patt`/`Pat2`/`Pat3` global blocks) in `oracle-edit-io`.
 
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use oracle_edit_geom::Rect;
+use oracle_edit_raster::Surface;
 
 /// Largest pattern edge a file may declare (the PSD reader's limit; Define Pattern stops at 4000).
 pub const MAX_EDGE: u32 = 30_000;
@@ -101,7 +101,7 @@ pub fn find<'a>(patterns: &'a [Pattern], id: &str, name: &str) -> Option<&'a Pat
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photocraft_color::PixelFormat;
+    use oracle_edit_color::PixelFormat;
 
     #[test]
     fn ids_are_deterministic_and_lookup_falls_back_to_names() {

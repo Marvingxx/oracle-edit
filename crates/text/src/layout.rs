@@ -21,8 +21,8 @@ use parley::{
     Alignment, AlignmentOptions, FontData, FontFamily, FontFeatures, FontStyle, FontVariations, FontWeight, IndentOptions, Layout, LayoutContext,
     PositionedLayoutItem, StyleProperty,
 };
-use photocraft_doc::TextLayer;
-use photocraft_doc::text::{Caps, CharStyle, FontBaseline, Kerning, Orientation, TextAlign, TextDirection, TextShape};
+use oracle_edit_doc::TextLayer;
+use oracle_edit_doc::text::{Caps, CharStyle, FontBaseline, Kerning, Orientation, TextAlign, TextDirection, TextShape};
 use skrifa::raw::types::Tag;
 
 use crate::fonts::FontDb;
@@ -1458,8 +1458,8 @@ pub(crate) fn hangul_runs(text: &str) -> Vec<std::ops::Range<usize>> {
 #[cfg(test)]
 mod tests {
     use super::{SmallCapsMode, feature_list, small_caps_mode, variation_list};
-    use photocraft_doc::TextLayer;
-    use photocraft_doc::text::{Caps, CharStyle, FontVariation, TextRun};
+    use oracle_edit_doc::TextLayer;
+    use oracle_edit_doc::text::{Caps, CharStyle, FontVariation, TextRun};
 
     /// Reference: the lookup the layout used before it became a binary search.
     fn run_index_reference(starts: &[usize], off: usize) -> usize {

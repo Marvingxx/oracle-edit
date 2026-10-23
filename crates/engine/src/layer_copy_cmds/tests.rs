@@ -1,7 +1,7 @@
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Document, LayerContent, LayerId, Pattern};
-use photocraft_geom::Rect;
-use photocraft_raster::Surface;
+use oracle_edit_color::{ColorMode, PixelFormat, SampleType};
+use oracle_edit_doc::{Document, LayerContent, LayerId, Pattern};
+use oracle_edit_geom::Rect;
+use oracle_edit_raster::Surface;
 use serde_json::{Value, json};
 
 use crate::Session;

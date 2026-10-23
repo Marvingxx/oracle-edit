@@ -1,9 +1,9 @@
 //! Filters refuse a pixel-locked (or fully locked) layer and leave it unchanged, as painting
 //! does (#1102).
 
-use photocraft_doc::LayerId;
-use photocraft_engine::Session;
-use photocraft_geom::Rect;
+use oracle_edit_doc::LayerId;
+use oracle_edit_engine::Session;
+use oracle_edit_geom::Rect;
 use serde_json::json;
 
 fn layered() -> Session {

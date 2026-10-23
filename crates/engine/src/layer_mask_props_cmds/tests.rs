@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use photocraft_color::{ColorMode, PixelFormat, SampleType};
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent, LayerMask, Path, VectorMask};
-use photocraft_geom::{Rect, Size};
-use photocraft_raster::Surface;
+use oracle_edit_color::{ColorMode, PixelFormat, SampleType};
+use oracle_edit_doc::{Adjustment, Document, Layer, LayerContent, LayerMask, Path, VectorMask};
+use oracle_edit_geom::{Rect, Size};
+use oracle_edit_raster::Surface;
 
 use super::*;
 
@@ -84,7 +84,7 @@ fn property_commands_update_rendered_edges_without_rewriting_the_mask() {
             doc.layers.push(layer);
             let mut s = Session::new();
             s.add_document(doc, None);
-            let render = |s: &Session| photocraft_compose::flatten(&s.active().unwrap().doc);
+            let render = |s: &Session| oracle_edit_compose::flatten(&s.active().unwrap().doc);
             let original = render(&s);
             assert!(original.get(31, 4)[0] < 0.01 && original.get(32, 4)[0] > 0.99);
 

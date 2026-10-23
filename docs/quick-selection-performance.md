@@ -88,9 +88,9 @@ resolution and automatic window expansion.
 ## Reproduction
 
 ```sh
-cargo test --release -p photocraft-algo quick_selection_surface_release_comparison -- --ignored --nocapture --test-threads=1
-cargo test --release -p photocraft-algo quick_selection_workflow_release_comparison -- --ignored --nocapture --test-threads=1
-cargo test --release -p photocraft-algo solver_workload_release_comparison -- --ignored --nocapture --test-threads=1
+cargo test --release -p oracle-edit-algo quick_selection_surface_release_comparison -- --ignored --nocapture --test-threads=1
+cargo test --release -p oracle-edit-algo quick_selection_workflow_release_comparison -- --ignored --nocapture --test-threads=1
+cargo test --release -p oracle-edit-algo solver_workload_release_comparison -- --ignored --nocapture --test-threads=1
 ```
 
 The private const test path keeps the previous dense weight scan and the

@@ -1,5 +1,5 @@
 use super::*;
-use photocraft_paint::tile::{b64_decode, b64_encode};
+use oracle_edit_paint::tile::{b64_decode, b64_encode};
 
 fn names(s: &Session) -> Vec<String> {
     s.presets.swatches.iter().flat_map(|g| g.items.iter().map(|i| i.name.clone())).collect()
@@ -122,7 +122,7 @@ fn aco_round_trip_keeps_16_bit_values_and_books() {
         AcoSwatch { name: "G".into(), color: AcoColor::Gray(1234) },
         AcoSwatch { name: "Book".into(), color: AcoColor::Other { space: 3, values: [9, 8, 7, 6] } },
     ];
-    let file = photocraft_psd::aco::write(&swatches).unwrap();
+    let file = oracle_edit_psd::aco::write(&swatches).unwrap();
     let mut s = Session::new();
     let r = s.execute("swatches.import", json!({"data": b64_encode(&file), "group": "Pro", "mode": "replace"})).unwrap();
     assert_eq!((r["format"].as_str(), r["count"].as_u64()), (Some("aco"), Some(6)));
@@ -155,7 +155,7 @@ fn act_round_trip_loads_a_photoshop_color_table() {
         let v = i as u8;
         *c = [v, 255 - v, 128];
     }
-    let file = photocraft_psd::act::write(&colors, Some(256), Some(255)).unwrap();
+    let file = oracle_edit_psd::act::write(&colors, Some(256), Some(255)).unwrap();
     assert_eq!(file.len(), 772);
     let mut s = Session::new();
     let r = s.execute("swatches.import", json!({"data": b64_encode(&file), "group": "Table", "mode": "replace"})).unwrap();
@@ -168,7 +168,7 @@ fn act_round_trip_loads_a_photoshop_color_table() {
     assert_eq!(r["format"].as_str(), Some("act"));
     // Export keeps the 256 RGB colors; the trailer comes back in canonical form
     // (swatches have no transparency to preserve).
-    let canon = photocraft_psd::act::write(&colors, Some(256), None).unwrap();
+    let canon = oracle_edit_psd::act::write(&colors, Some(256), None).unwrap();
     assert_eq!(export_bytes(&mut s, json!({"format": "act"})), canon);
     // A bigger library is capped at 256 with a warning; groups collapse to one list.
     for i in 0..300 {
@@ -188,7 +188,7 @@ fn act_that_starts_like_an_aco_is_still_an_act() {
     for (i, c) in colors.iter_mut().enumerate().skip(1) {
         *c = [(i as u8).wrapping_add(4), 7, 9];
     }
-    for file in [photocraft_psd::act::write(&colors, None, None).unwrap(), photocraft_psd::act::write(&colors, Some(256), None).unwrap()] {
+    for file in [oracle_edit_psd::act::write(&colors, None, None).unwrap(), oracle_edit_psd::act::write(&colors, Some(256), None).unwrap()] {
         assert_eq!(&file[..4], &[0, 1, 0, 5]);
         let mut s = Session::new();
         let r = s.execute("swatches.import", json!({"data": b64_encode(&file), "mode": "replace"})).unwrap();
@@ -196,8 +196,8 @@ fn act_that_starts_like_an_aco_is_still_an_act() {
     }
     // A real .aco of exactly 768 bytes (ten swatches with 25-character names) stays an .aco.
     let swatches: Vec<AcoSwatch> = (0..10u16).map(|i| AcoSwatch { name: format!("{i:0>25}"), color: AcoColor::Rgb([i * 1000, 0, 65535]) }).collect();
-    let file = photocraft_psd::aco::write(&swatches).unwrap();
-    assert_eq!(file.len(), photocraft_psd::act::PALETTE_LEN);
+    let file = oracle_edit_psd::aco::write(&swatches).unwrap();
+    assert_eq!(file.len(), oracle_edit_psd::act::PALETTE_LEN);
     let mut s = Session::new();
     let r = s.execute("swatches.import", json!({"data": b64_encode(&file), "mode": "replace"})).unwrap();
     assert_eq!((r["format"].as_str(), r["count"].as_u64()), (Some("aco"), Some(10)));
@@ -220,7 +220,7 @@ fn ase_round_trip_keeps_groups_floats_and_kinds() {
             },
         ],
     };
-    let bytes = photocraft_psd::ase::write(&src).unwrap();
+    let bytes = oracle_edit_psd::ase::write(&src).unwrap();
     let mut s = Session::new();
     let r = s.execute("swatches.import", json!({"data": b64_encode(&bytes), "group": "Exchange"})).unwrap();
     assert_eq!(r["groups"], json!(["Exchange", "Brand"]));
@@ -232,7 +232,7 @@ fn ase_round_trip_keeps_groups_floats_and_kinds() {
     assert_eq!(brand.items[2].color, SwatchColor::Gray(0.75));
     // Export both groups and read them back.
     let out = export_bytes(&mut s, json!({"format": "ase", "swatches": ["Loose", "Spot ink", "Global lab", "Gray"]}));
-    let back = photocraft_psd::ase::parse(&out).unwrap();
+    let back = oracle_edit_psd::ase::parse(&out).unwrap();
     let flat: Vec<&AseSwatch> = back
         .entries
         .iter()
@@ -252,7 +252,7 @@ fn ase_round_trip_keeps_groups_floats_and_kinds() {
     // HSB swatches become RGB in .ase.
     s.execute("swatches.add", json!({"name": "Hue", "color": {"model": "hsb", "values": [120, 100, 100]}})).unwrap();
     let out = export_bytes(&mut s, json!({"format": "ase", "swatches": ["Hue"]}));
-    let back = photocraft_psd::ase::parse(&out).unwrap();
+    let back = oracle_edit_psd::ase::parse(&out).unwrap();
     assert_eq!(
         back.entries,
         vec![AseEntry::Group {
@@ -338,7 +338,7 @@ fn bad_params_fail_gracefully() {
 fn library_limits() {
     let mut s = Session::new();
     let one = vec![AcoSwatch { name: "x".into(), color: AcoColor::Gray(0) }; 60_000];
-    let file = b64_encode(&photocraft_psd::aco::write(&one).unwrap());
+    let file = b64_encode(&oracle_edit_psd::aco::write(&one).unwrap());
     s.execute("swatches.import", json!({"data": file, "mode": "replace"})).unwrap();
     assert!(s.execute("swatches.import", json!({"data": file})).is_err(), "over the library limit");
     assert_eq!(names(&s).len(), 60_000);
@@ -362,7 +362,7 @@ fn unnamed_groups_are_numbered_in_linear_time() {
         let paper = AseSwatch { name: "Paper".into(), color: AseColor::Gray(1.0), kind: AseKind::Process };
         let mut entries = vec![AseEntry::Group { name: String::new(), swatches: Vec::new() }; n];
         entries[0] = AseEntry::Group { name: String::new(), swatches: vec![paper] };
-        let file = b64_encode(&photocraft_psd::ase::write(&AseFile { entries }).unwrap());
+        let file = b64_encode(&oracle_edit_psd::ase::write(&AseFile { entries }).unwrap());
         let r = s.execute("swatches.import", json!({"data": file, "group": "Ink"})).unwrap();
         assert_eq!(s.presets.swatches.len(), MAX_GROUPS);
         let names: Vec<String> = r["groups"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
@@ -387,7 +387,7 @@ fn repeated_group_names_take_the_first_free_number() {
     }
     let paper = AseSwatch { name: "Paper".into(), color: AseColor::Gray(1.0), kind: AseKind::Process };
     let entries = ["Brand", "Brand", "Brand", "Brand 1"].into_iter().map(|name| AseEntry::Group { name: name.into(), swatches: vec![paper.clone()] }).collect();
-    let file = b64_encode(&photocraft_psd::ase::write(&AseFile { entries }).unwrap());
+    let file = b64_encode(&oracle_edit_psd::ase::write(&AseFile { entries }).unwrap());
     let r = s.execute("swatches.import", json!({"data": file})).unwrap();
     // The file's "Brand 1" comes after the first "Brand" took that name.
     assert_eq!(r["groups"], json!(["Brand 1", "Brand 3", "Brand 4", "Brand 1 1"]));

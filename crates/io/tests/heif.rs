@@ -4,9 +4,9 @@
 
 #![cfg(all(feature = "corpus", feature = "heif"))]
 
-use photocraft_codecs::{Format, decode, detect, exif_orientation};
-use photocraft_doc::{ColorMode, SampleType};
-use photocraft_io::{ExportOptions, export, import};
+use oracle_edit_codecs::{Format, decode, detect, exif_orientation};
+use oracle_edit_doc::{ColorMode, SampleType};
+use oracle_edit_io::{ExportOptions, export, import};
 
 /// A file of `corpus/heif/`; a missing corpus fails.
 fn corpus(rel: &str) -> Vec<u8> {

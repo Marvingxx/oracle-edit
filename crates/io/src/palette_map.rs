@@ -5,10 +5,10 @@
 //! Data (768 bytes: 256 reds, 256 greens, 256 blues), its length in resource 1046 and the
 //! transparent entry in resource 1047; for Bitmap one plane of 1 bit per pixel, 1 = black.
 
-use photocraft_color::ColorMode;
-use photocraft_doc::{ColorTable, Document};
-use photocraft_psd::resources::{ImageResource, ResolutionInfo, ids};
-use photocraft_psd::{ColorMode as PsdMode, Compression, Header, ImageData, PsdFile};
+use oracle_edit_color::ColorMode;
+use oracle_edit_doc::{ColorTable, Document};
+use oracle_edit_psd::resources::{ImageResource, ResolutionInfo, ids};
+use oracle_edit_psd::{ColorMode as PsdMode, Compression, Header, ImageData, PsdFile};
 
 /// Indexed Color Table Count: the number of colours in the table (u16).
 pub(crate) const COLOR_TABLE_COUNT: u16 = 1046;
@@ -78,14 +78,14 @@ fn flattens_losslessly(doc: &Document) -> bool {
         [] => true,
         [l] => {
             l.visible
-                && matches!(l.content, photocraft_doc::LayerContent::Raster(_))
+                && matches!(l.content, oracle_edit_doc::LayerContent::Raster(_))
                 && l.mask.is_none()
                 && l.vector_mask.is_none()
                 && !l.clipped
                 && l.opacity >= 1.0
                 && l.fill_opacity >= 1.0
-                && l.blend == photocraft_color::BlendMode::Normal
-                && !(l.effects.enabled && l.effects.items.iter().any(photocraft_doc::Effect::enabled))
+                && l.blend == oracle_edit_color::BlendMode::Normal
+                && !(l.effects.enabled && l.effects.items.iter().any(oracle_edit_doc::Effect::enabled))
         }
         _ => false,
     }
@@ -111,7 +111,7 @@ fn indices(doc: &Document, t: &ColorTable) -> Vec<u8> {
         t.colors.iter().copied().enumerate().filter(|(i, _)| Some(*i) != t.transparent.map(usize::from)).map(|(i, c)| (i as u8, c)).unzip();
     let opaque = ColorTable { colors, transparent: None };
     let mut idx = Vec::with_capacity(doc.size.area() as usize);
-    let _ = photocraft_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
+    let _ = oracle_edit_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
         idx.extend(band.px.iter().map(|p| match t.transparent {
             Some(i) if p[3] < 0.5 => i,
             Some(_) => opaque_indices.get(opaque.nearest([p[0], p[1], p[2]])).copied().unwrap_or(0),
@@ -131,7 +131,7 @@ fn bits(doc: &Document) -> Vec<u8> {
     let w = doc.size.width as usize;
     let row = w.div_ceil(8);
     let mut out = Vec::with_capacity(row * doc.size.height as usize);
-    let _ = photocraft_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
+    let _ = oracle_edit_compose::render_bands(doc, doc.bounds(), 0, |band| -> Result<(), ()> {
         for line in band.px.chunks(w.max(1)) {
             let mut bytes = vec![0u8; row];
             for (x, p) in line.iter().enumerate() {

@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use photocraft_doc::Document;
+use oracle_edit_doc::Document;
 use serde::{Deserialize, Serialize};
 
 use crate::store::write_atomic;
@@ -446,7 +446,7 @@ mod tests {
             SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
         ));
         let doc =
-            Arc::new(Document::new("Kept", photocraft_doc::Size { width: 4, height: 4 }, photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8));
+            Arc::new(Document::new("Kept", oracle_edit_doc::Size { width: 4, height: 4 }, oracle_edit_color::ColorMode::Rgb, oracle_edit_color::SampleType::U8));
         let saver = Autosaver::new(&dir, "kept");
         saver.request(doc.clone(), 1, None, SaveOptions::default());
         assert!(saver.flush().is_some_and(|r| r.is_ok()));
@@ -488,7 +488,7 @@ mod tests {
             SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
         ));
         let doc =
-            Arc::new(Document::new("Lost", photocraft_doc::Size { width: 4, height: 4 }, photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8));
+            Arc::new(Document::new("Lost", oracle_edit_doc::Size { width: 4, height: 4 }, oracle_edit_color::ColorMode::Rgb, oracle_edit_color::SampleType::U8));
         let saver = Autosaver::new(&dir, "first");
         saver.request(doc.clone(), 1, None, SaveOptions::default());
         assert!(saver.flush().is_some_and(|r| r.is_ok()));

@@ -1,12 +1,12 @@
-//! Headless backend: a `photocraft_engine::Session` plus file I/O. Synchronous
+//! Headless backend: a `oracle_edit_engine::Session` plus file I/O. Synchronous
 //! and UI-free; the MCP server and the CLI both drive it.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use photocraft_engine::{Session, command_specs, file_cmds};
-use photocraft_format::PcraftWriter;
-use photocraft_io::ExportOptions;
+use oracle_edit_engine::{Session, command_specs, file_cmds};
+use oracle_edit_format::PcraftWriter;
+use oracle_edit_io::ExportOptions;
 use serde_json::{Value, json};
 
 use crate::workspace::{ExportSequence, authorize_engine_command, authorize_engine_step};
@@ -113,7 +113,7 @@ impl Headless {
         }
         let d = &self.session.documents()[index];
         let mut warnings = o.warnings;
-        warnings.extend(photocraft_engine::type_extra_cmds::missing_font_warnings(&d.doc));
+        warnings.extend(oracle_edit_engine::type_extra_cmds::missing_font_warnings(&d.doc));
         Ok(json!({
             "index": index,
             "name": d.doc.name,
@@ -170,7 +170,7 @@ impl Headless {
             };
             let mut outputs = workspace.export_sequence(dir)?;
             let written = file_cmds::export_layers_with(&this.session, params, |name, bytes| {
-                outputs.write(name, bytes).map_err(|e| photocraft_engine::EngineError::Other(e.to_string()))
+                outputs.write(name, bytes).map_err(|e| oracle_edit_engine::EngineError::Other(e.to_string()))
             });
             exported(dir, written, &mut outputs)
         })
@@ -193,8 +193,8 @@ impl Headless {
                 _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
             };
             let mut outputs = workspace.export_sequence(dir)?;
-            let written = photocraft_engine::export_data_sets_with(&this.session, params, |name, bytes| {
-                outputs.write(name, bytes).map_err(|e| photocraft_engine::EngineError::Other(e.to_string()))
+            let written = oracle_edit_engine::export_data_sets_with(&this.session, params, |name, bytes| {
+                outputs.write(name, bytes).map_err(|e| oracle_edit_engine::EngineError::Other(e.to_string()))
             });
             exported(dir, written, &mut outputs)
         })
@@ -219,7 +219,7 @@ impl Headless {
                 _ => return Err(AutomationError::BadRequest("automation filesystem access is not granted: read authority is absent".into())),
             };
             this.sync_jobs();
-            Ok(photocraft_engine::import_data_sets_text(&mut this.session, &text, params)?)
+            Ok(oracle_edit_engine::import_data_sets_text(&mut this.session, &text, params)?)
         })
     }
 
@@ -264,7 +264,7 @@ impl Headless {
                 warnings
             }
         };
-        warnings.extend(photocraft_engine::type_extra_cmds::missing_font_warnings(&doc));
+        warnings.extend(oracle_edit_engine::type_extra_cmds::missing_font_warnings(&doc));
         // A layered document save (PSD, PSB, OpenRaster or .pcraft) that holds the whole document is a
         // full write, not a flattened copy: record the current revision as saved so the session
         // stops reporting `dirty`, and make the file the document's path. A flat export (PNG,
@@ -289,14 +289,14 @@ impl Headless {
         let requested = path.to_str().ok_or_else(|| AutomationError::BadRequest("automation paths must be valid UTF-8".into()))?;
         match &self.filesystem {
             Filesystem::Denied => Err(AutomationError::BadRequest("automation filesystem access is not granted: write authority is absent".into())),
-            Filesystem::TrustedLocal => photocraft_format::atomic_write(path, bytes).map_err(|error| AutomationError::Io(error.to_string())),
+            Filesystem::TrustedLocal => oracle_edit_format::atomic_write(path, bytes).map_err(|error| AutomationError::Io(error.to_string())),
             Filesystem::Workspace(workspace) => workspace.write(requested, bytes),
         }
     }
 
     pub fn inspect(&self, index: Option<usize>) -> Result<Value, AutomationError> {
         let i = self.doc_index(index)?;
-        Ok(photocraft_engine::inspect::document(&self.session.documents()[i]))
+        Ok(oracle_edit_engine::inspect::document(&self.session.documents()[i]))
     }
 
     pub fn render_png(&self, index: Option<usize>, max_side: u32) -> Result<Vec<u8>, AutomationError> {
@@ -313,7 +313,7 @@ impl Headless {
     }
 
     pub fn session_list(&self) -> Value {
-        photocraft_engine::inspect::session(&self.session)
+        oracle_edit_engine::inspect::session(&self.session)
     }
 
     pub fn select(&mut self, index: usize) -> Result<Value, AutomationError> {
@@ -329,7 +329,7 @@ impl Headless {
     }
 
     pub fn command_list(&self) -> Value {
-        Value::Array(command_specs().iter().map(|c| photocraft_engine::commands::list_entry(&self.session, c, self.session.disabled_reason(c.id))).collect())
+        Value::Array(command_specs().iter().map(|c| oracle_edit_engine::commands::list_entry(&self.session, c, self.session.disabled_reason(c.id))).collect())
     }
 
     pub fn command_run(&mut self, id: &str, params: Value) -> Result<Value, AutomationError> {
@@ -353,8 +353,8 @@ impl Headless {
             return Ok(self.session.execute(id, params)?);
         }
         Ok(match self.session.start(id, params)? {
-            photocraft_engine::jobs::Started::Done(v) => v,
-            photocraft_engine::jobs::Started::Job(job) => json!({"job": job.0, "pending": true}),
+            oracle_edit_engine::jobs::Started::Done(v) => v,
+            oracle_edit_engine::jobs::Started::Job(job) => json!({"job": job.0, "pending": true}),
         })
     }
 }
@@ -369,10 +369,10 @@ impl Headless {
         };
         let dir = params.get("dir").and_then(Value::as_str).ok_or_else(|| AutomationError::BadRequest("renderVideo needs `dir`".into()))?;
         let mut outputs = workspace.export_sequence(dir)?;
-        let result = photocraft_engine::render_video_with(
+        let result = oracle_edit_engine::render_video_with(
             &self.session,
             &params,
-            |name, bytes| outputs.write(name, bytes).map_err(|e| photocraft_engine::EngineError::Other(e.to_string())),
+            |name, bytes| outputs.write(name, bytes).map_err(|e| oracle_edit_engine::EngineError::Other(e.to_string())),
             progress,
         );
         match result {
@@ -390,7 +390,7 @@ impl Headless {
 
 /// Common tail of the two capability-scoped exports: the sequence keeps what it wrote, or drops
 /// every file it created, so a half-finished export never looks like a finished one.
-fn exported(dir: &str, written: photocraft_engine::Result<Vec<String>>, outputs: &mut ExportSequence) -> Result<Value, AutomationError> {
+fn exported(dir: &str, written: oracle_edit_engine::Result<Vec<String>>, outputs: &mut ExportSequence) -> Result<Value, AutomationError> {
     match written {
         Ok(names) => {
             outputs.commit();

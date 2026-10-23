@@ -1,7 +1,7 @@
 //! Filter › Video: De-Interlace and NTSC Colors.
 
-use photocraft_color::ColorMode;
-use photocraft_geom::Rect;
+use oracle_edit_color::ColorMode;
+use oracle_edit_geom::Rect;
 
 use crate::Ctx;
 use crate::fxutil::{MAXC, rgba, set_rgba, xy};

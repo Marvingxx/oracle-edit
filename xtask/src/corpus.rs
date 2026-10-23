@@ -8,19 +8,19 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::corpus_pins::{
-    self, AG_PSD_COMMIT, HEIC_RS_COMMIT, OPENEXR_COMMIT, PHOTOCRAFT_CORPUS_COMMIT, PHOTOCRAFT_CORPUS_GIMP_COMMIT, PILLOW_HEIF_COMMIT, PNGSUITE_SHA256,
+    self, AG_PSD_COMMIT, HEIC_RS_COMMIT, OPENEXR_COMMIT, ORACLE_EDIT_CORPUS_COMMIT, ORACLE_EDIT_CORPUS_GIMP_COMMIT, PILLOW_HEIF_COMMIT, PNGSUITE_SHA256,
     PNGSUITE_URL, PSD_TOOLS_COMMIT,
 };
 use crate::pinned::{PinnedCorpus, USER_AGENT};
 use crate::{cargo, root, run};
 
 /// Crates with corpus tests (behind their `corpus` feature).
-pub const CORPUS_CRATES: &[&str] = &["photocraft-psd", "photocraft-codecs", "photocraft-io", "photocraft-engine"];
+pub const CORPUS_CRATES: &[&str] = &["oracle-edit-psd", "oracle-edit-codecs", "oracle-edit-io", "oracle-edit-engine"];
 /// Opt-in corpus crates: fetched and tested only with `test-corpus --pixls`.
-pub const PIXLS_CRATES: &[&str] = &["photocraft-raw"];
+pub const PIXLS_CRATES: &[&str] = &["oracle-edit-raw"];
 
 /// Corpus crates with a `heif` feature: test-corpus enables it so the HEIF corpus tests run.
-const HEIF_CRATES: &[&str] = &["photocraft-codecs", "photocraft-io"];
+const HEIF_CRATES: &[&str] = &["oracle-edit-codecs", "oracle-edit-io"];
 
 /// Paths whose changes make `test-corpus --changed` run (the file-format and rendering crates,
 /// and the engine's `.atn` import and export).
@@ -98,14 +98,14 @@ pub fn cmd(args: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-/// The authoring clone of photocraft-corpus: `$PHOTOCRAFT_CORPUS_REPO`, else `../photocraft-corpus`.
+/// The authoring clone of photocraft-corpus: `$ORACLE_EDIT_CORPUS_REPO`, else `../photocraft-corpus`.
 fn local_clone() -> Result<PathBuf, String> {
-    if let Some(p) = std::env::var_os("PHOTOCRAFT_CORPUS_REPO").filter(|v| !v.is_empty()) {
+    if let Some(p) = std::env::var_os("ORACLE_EDIT_CORPUS_REPO").filter(|v| !v.is_empty()) {
         return Ok(PathBuf::from(p));
     }
     let sibling = root().parent().map(|p| p.join("photocraft-corpus"));
     sibling.filter(|s| s.join("photoshop").is_dir()).ok_or_else(|| {
-        "no local photocraft-corpus clone: expected ../photocraft-corpus next to this checkout, or set PHOTOCRAFT_CORPUS_REPO=<path>".to_string()
+        "no local photocraft-corpus clone: expected ../photocraft-corpus next to this checkout, or set ORACLE_EDIT_CORPUS_REPO=<path>".to_string()
     })
 }
 
@@ -149,11 +149,11 @@ fn list() {
   cargo xtask test-corpus       fetch, then run every corpus test (--release --features corpus)
 
   corpus/photoshop/  [{}] our Photoshop-authored oracles (MIT OR Apache-2.0), from
-                     https://github.com/storytold/photocraft-corpus at {PHOTOCRAFT_CORPUS_COMMIT}
+                     https://github.com/storytold/photocraft-corpus at {ORACLE_EDIT_CORPUS_COMMIT}
                      manifest xtask/photoshop-corpus.sha256. Fetch: --photoshop
-                     (--photoshop --local copies from ../photocraft-corpus or $PHOTOCRAFT_CORPUS_REPO)
+                     (--photoshop --local copies from ../photocraft-corpus or $ORACLE_EDIT_CORPUS_REPO)
   corpus/gimp/       [{}] our GIMP-authored XCF oracles with GIMP's PNG renderings (MIT OR Apache-2.0),
-                     from the same repository at {PHOTOCRAFT_CORPUS_GIMP_COMMIT}
+                     from the same repository at {ORACLE_EDIT_CORPUS_GIMP_COMMIT}
                      manifest xtask/gimp-corpus.sha256. Fetch: --gimp (--gimp --local copies from the clone)
   corpus/psd/        [{}] 170 small psd-tools + ag-psd files (MIT), psd-tools@{} and
                      ag-psd@{}, manifest xtask/psd-corpus.sha256. Fetch: --psd
@@ -430,7 +430,7 @@ pub fn test_cmd(args: &[&str]) -> Result<(), String> {
         match *a {
             "-p" | "--package" => {
                 let name = it.next().ok_or("-p needs a crate name")?;
-                let full = if name.starts_with("photocraft-") { (*name).to_string() } else { format!("photocraft-{name}") };
+                let full = if name.starts_with("oracle-edit-") { (*name).to_string() } else { format!("oracle-edit-{name}") };
                 if !CORPUS_CRATES.contains(&full.as_str()) && !PIXLS_CRATES.contains(&full.as_str()) {
                     return Err(format!("{full} has no corpus tests (crates: {} or the opt-in {})", CORPUS_CRATES.join(", "), PIXLS_CRATES.join(", ")));
                 }
@@ -446,8 +446,8 @@ pub fn test_cmd(args: &[&str]) -> Result<(), String> {
     // `--pixls` opts in (and fetches), and a raw change under --changed does too: the raw
     // corpus tests are not part of the default set until a maintainer decides otherwise.
     let wants_pixls = ours.contains(&"--pixls") || crates.iter().any(|c| PIXLS_CRATES.contains(&c.as_str())) || raw_changed;
-    if wants_pixls && !crates.iter().any(|c| c == "photocraft-raw") {
-        crates.push("photocraft-raw".to_string());
+    if wants_pixls && !crates.iter().any(|c| c == "oracle-edit-raw") {
+        crates.push("oracle-edit-raw".to_string());
     }
     if wants_pixls {
         crate::pinned::fetch_pixls(false)?;
@@ -504,7 +504,7 @@ mod tests {
     impl Fixture {
         fn new() -> Self {
             let id = PNGSUITE_STAGE_ID.fetch_add(1, Ordering::Relaxed);
-            let path = std::env::temp_dir().join(format!("photocraft-pngsuite-test-{}-{id}", std::process::id()));
+            let path = std::env::temp_dir().join(format!("oracle-edit-pngsuite-test-{}-{id}", std::process::id()));
             std::fs::create_dir(&path).unwrap();
             Self(path)
         }
@@ -734,7 +734,7 @@ mod tests {
     // enables emission; it stays alive so cleanup must kill and reap that particular child.
     #[test]
     fn pngsuite_stream_fixture() {
-        if std::env::var_os("PHOTOCRAFT_PNGSUITE_STREAM_TEST").is_some() {
+        if std::env::var_os("ORACLE_EDIT_PNGSUITE_STREAM_TEST").is_some() {
             let mut out = std::io::stdout().lock();
             for _ in 0..256 {
                 let _ = out.write_all(&[0xa5; 8192]);
@@ -746,7 +746,7 @@ mod tests {
     fn stream_child() -> Child {
         Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "corpus::tests::pngsuite_stream_fixture", "--nocapture"])
-            .env("PHOTOCRAFT_PNGSUITE_STREAM_TEST", "1")
+            .env("ORACLE_EDIT_PNGSUITE_STREAM_TEST", "1")
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()

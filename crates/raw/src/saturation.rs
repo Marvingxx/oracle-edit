@@ -2,7 +2,7 @@
 //!
 //! A DNG's `WhiteLevel` is what the writer says the samples top out at, not always where the sensor
 //! really saturates: a camera app can state 4095 for 12-bit data that piles up at 3567 (85 % of the
-//! range above black, storytold/photocraft#4348, as storytold/lightcraft#548). Development clips each
+//! range above black, Marvingxx/oracle-edit#4348, as storytold/lightcraft#548). Development clips each
 //! channel at 1 after white balance, so samples stuck 15 % below the white level are not clipped
 //! together: red and blue (multiplied by more than green) reach 1, green stays at 0.85, and blown
 //! highlights turn magenta.

@@ -1,11 +1,11 @@
 //! Photoshop Actions files (`.atn`): Load Actions (`actions.load`) and Save Actions
 //! (`actions.save`), plus the two step commands a Photoshop set needs: `actions.stopMessage`
-//! (Photoshop's Insert Stop) and `actions.photoshopStep` (a step PhotoCraft has no command for
+//! (Photoshop's Insert Stop) and `actions.photoshopStep` (a step Oracle Edit has no command for
 //! yet, kept verbatim so Save Actions writes it back unchanged).
 //!
-//! Parsing and writing live in `photocraft-psd` (`atn`); this module maps Photoshop *events*
+//! Parsing and writing live in `oracle-edit-psd` (`atn`); this module maps Photoshop *events*
 //! (`gaussianBlur` with `Rds`, `make` of an adjustment layer, `set` of the selection…) onto
-//! PhotoCraft commands and back. An event is keyed by both its four-character code (`GsnB`,
+//! Oracle Edit commands and back. An event is keyed by both its four-character code (`GsnB`,
 //! older files) and its string name (`gaussianBlur`, Photoshop 2024 and later), as the two are
 //! interchangeable in Photoshop. The table ([`EVENTS`]) is bidirectional: a step that was
 //! imported exports to the same event. Events outside it become `actions.photoshopStep` steps,
@@ -15,20 +15,20 @@
 //! Layer references by name (`select` of layer "Shadow") become `{"layer": "Shadow"}`, which
 //! `commands::layer_param` resolves in whatever document the action plays on (#219).
 
-use photocraft_psd::atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem};
-use photocraft_psd::descriptor::{Class, Descriptor, Id, ReferenceItem, UnicodeString, Value as D};
+use oracle_edit_psd::atn::{self, AtnAction, AtnEvent, AtnFile, AtnItem};
+use oracle_edit_psd::descriptor::{Class, Descriptor, Id, ReferenceItem, UnicodeString, Value as D};
 use serde_json::{Map, Value, json};
 
 use crate::actions_cmds::Action;
 use crate::commands::CommandSpec;
 use crate::{EngineError, Result, Session};
 
-/// A step PhotoCraft cannot play yet, kept verbatim (`{"event", "name", "descriptor": base64}`).
+/// A step Oracle Edit cannot play yet, kept verbatim (`{"event", "name", "descriptor": base64}`).
 pub const PHOTOSHOP_STEP: &str = "actions.photoshopStep";
 /// Photoshop's Insert Stop: `{"message", "allowContinue"}`.
 pub const STOP_MESSAGE: &str = "actions.stopMessage";
 /// The set name Save Actions uses for actions that came from no set.
-pub const DEFAULT_SET: &str = "PhotoCraft Actions";
+pub const DEFAULT_SET: &str = "Oracle Edit Actions";
 
 fn bad(cmd: &str, msg: impl Into<String>) -> EngineError {
     EngineError::BadParams { cmd: cmd.into(), msg: msg.into() }
@@ -300,7 +300,7 @@ fn path_value(text: &str) -> D {
     D::Path(b)
 }
 
-/// Photoshop's `BlnM` enumeration ↔ PhotoCraft's blend mode labels.
+/// Photoshop's `BlnM` enumeration ↔ Oracle Edit's blend mode labels.
 const BLEND_MODES: &[(&str, &str)] = &[
     ("Nrml", "Normal"),
     ("Dslv", "Dissolve"),
@@ -340,7 +340,7 @@ fn blend_ps(label: &str) -> Option<&'static str> {
     crate::commands::blend_from_str(label).and_then(|m| BLEND_MODES.iter().find(|(_, v)| crate::commands::blend_from_str(v) == Some(m))).map(|(k, _)| *k)
 }
 
-/// Photoshop ↔ PhotoCraft value tables; Photoshop codes compare without their space padding.
+/// Photoshop ↔ Oracle Edit value tables; Photoshop codes compare without their space padding.
 fn lookup<'a>(table: &'a [(&'a str, &'a str)], key: &str) -> Option<&'a str> {
     table.iter().find(|(k, _)| k.trim_end() == key.trim_end()).map(|(_, v)| *v)
 }
@@ -395,7 +395,7 @@ enum Kind {
     ExactLong,
     Dbl,
     Bool,
-    /// An enumeration: its type id and the Photoshop ↔ PhotoCraft value pairs.
+    /// An enumeration: its type id and the Photoshop ↔ Oracle Edit value pairs.
     Enum(&'static str, &'static [(&'static str, &'static str)]),
     /// A blend mode (`BlnM`).
     Blend,
@@ -629,10 +629,10 @@ fn hue_entry(p: &Value, range: Option<(usize, &Value)>) -> Option<Descriptor> {
 }
 
 // Exporters leave out a param the step doesn't set only where Photoshop plays the missing key
-// as PhotoCraft's default (checked against Photoshop: Fill opacity and mode, Crop delete,
+// as Oracle Edit's default (checked against Photoshop: Fill opacity and mode, Crop delete,
 // Selective Color method, Channel Mixer monochrome, Paint Bucket contiguous; Gradient Map
 // reverse and dither, which Photoshop itself leaves out when off). Elsewhere they
-// write PhotoCraft's default, as Photoshop plays a missing key differently (Color Balance
+// write Oracle Edit's default, as Photoshop plays a missing key differently (Color Balance
 // preserve luminosity off, Canvas Size anchored top left, Apply Image Normal) or refuses the
 // step (Paint Bucket without a tolerance).
 fn hue_sat_to(p: &Value) -> Option<Descriptor> {
@@ -720,7 +720,7 @@ fn channel_mixer_to(p: &Value) -> Option<Descriptor> {
 }
 
 /// Photoshop's `Clrs` colour-range enumeration. Yellows is `Ylws` (`Yllw` is the yellow ink
-/// key); earlier PhotoCraft builds wrote `Yllw`, which import still reads (#6745).
+/// key); earlier Oracle Edit builds wrote `Yllw`, which import still reads (#6745).
 const SELECTIVE_RANGES: &[(&str, &str)] = &[
     ("Rds", "reds"),
     ("Ylws", "yellows"),
@@ -915,9 +915,9 @@ fn adjustment_by_suffix(suffix: &str) -> Option<&'static Adjustment> {
 
 /// What one Photoshop step maps to.
 enum Mapped {
-    /// One or more PhotoCraft steps (a `make` with a name becomes new layer + rename).
+    /// One or more Oracle Edit steps (a `make` with a name becomes new layer + rename).
     Steps(Vec<(String, Value)>),
-    /// No PhotoCraft equivalent; `harmless` steps (tool selections…) are imported switched off.
+    /// No Oracle Edit equivalent; `harmless` steps (tool selections…) are imported switched off.
     Unsupported { harmless: bool },
 }
 
@@ -1011,7 +1011,7 @@ const PROFILES: &[(&str, &str)] =
     &[("sRGB IEC61966-2.1", "srgb"), ("Display P3", "display-p3"), ("Adobe RGB (1998)", "adobe-rgb-compat"), ("ProPhoto RGB", "prophoto-compat")];
 /// Smart Blur quality. Photoshop's codes come first, so they are what an export writes (measured in
 /// Photoshop: `Hgh `/`Mdm `/`Low ` play back as its fallback, low quality). The old codes after
-/// them still read, for actions PhotoCraft wrote before.
+/// them still read, for actions Oracle Edit wrote before.
 const SMART_BLUR_QUALITY: &[(&str, &str)] = &[("SBQL", "low"), ("SBQM", "medium"), ("SBQH", "high"), ("Hgh ", "high"), ("Mdm ", "medium"), ("Low ", "low")];
 const SMART_BLUR_MODE: &[(&str, &str)] = &[("SBMN", "normal"), ("SBME", "edgeOnly"), ("SBMO", "overlayEdge")];
 const RADIAL_METHOD: &[(&str, &str)] = &[("Spn ", "spin"), ("Zm  ", "zoom")];
@@ -2823,7 +2823,7 @@ macro_rules! adjustment_event {
 const RIPPLE_SIZE: &[(&str, &str)] = &[("Sml", "small"), ("Mdm", "medium"), ("Lrg", "large")];
 
 /// Select and Mask (`refineSelectionEdge`). Smart Radius, decontamination and the output follow
-/// Photoshop's; the edge itself is PhotoCraft's own matting, so results differ in detail.
+/// Photoshop's; the edge itself is Oracle Edit's own matting, so results differ in detail.
 const REFINE_EDGE: &[F] = &[
     F("refineEdgeBorderRadius", "radius", Kind::Px),
     F("refineEdgeAutoRadius", "smartRadius", Kind::Bool),
@@ -3004,7 +3004,7 @@ macro_rules! clipping_event {
     };
 }
 
-/// Every Photoshop event PhotoCraft maps. The order matters only for the panel label.
+/// Every Photoshop event Oracle Edit maps. The order matters only for the panel label.
 const EVENTS: &[Event] = &[
     // Filters.
     ev!("GsnB", "gaussianBlur", "Gaussian Blur", "filter.blur.gaussianBlur", &[F("Rds ", "radius", Kind::Px)]),
@@ -3422,7 +3422,7 @@ const EVENTS: &[Event] = &[
     Event { code: "Stop", name: "stop", label: "Stop", ids: &[STOP_MESSAGE], from: stop_from, to: stop_to },
 ];
 
-/// Four-char codes PhotoCraft once exported for events Photoshop only runs by name (or by
+/// Four-char codes Oracle Edit once exported for events Photoshop only runs by name (or by
 /// another code), with the name they stand for. Measured in Photoshop: `executeAction` with
 /// these codes fails ("the command is not currently available"), and `Fltn` is the
 /// `flatness` property, not the flatten event. Import keeps accepting them so actions saved
@@ -3446,7 +3446,7 @@ fn event_and_descriptor(id: &str, params: &Value) -> Option<(&'static Event, Des
 
 // ------------------------------------------------------------------ import
 
-/// A step with no PhotoCraft equivalent.
+/// A step with no Oracle Edit equivalent.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Unsupported {
     pub action: String,
@@ -3467,7 +3467,7 @@ pub struct Imported {
 }
 
 fn photoshop_step(item: &AtnItem) -> (String, Value) {
-    let descriptor = item.descriptor.as_ref().map(|d| photocraft_paint::tile::b64_encode(&d.to_bytes()));
+    let descriptor = item.descriptor.as_ref().map(|d| oracle_edit_paint::tile::b64_encode(&d.to_bytes()));
     (PHOTOSHOP_STEP.into(), json!({"event": item.event.id(), "name": item.label(), "descriptor": descriptor}))
 }
 
@@ -3557,7 +3557,7 @@ fn export_item(id: &str, params: &Value, set: &str) -> Option<AtnItem> {
             _ => AtnEvent::name(event),
         };
         let descriptor = match jstr(params, "descriptor") {
-            Some(b64) => Some(Descriptor::from_bytes(&photocraft_paint::tile::b64_decode(b64)?).ok()?),
+            Some(b64) => Some(Descriptor::from_bytes(&oracle_edit_paint::tile::b64_decode(b64)?).ok()?),
             None => None,
         };
         return Some(AtnItem { event, dictionary: jstr(params, "name").unwrap_or("").as_bytes().to_vec(), descriptor, ..Default::default() });
@@ -3756,7 +3756,7 @@ fn save(s: &mut Session, p: &Value) -> Result<Value> {
     let mut out = json!({"set": set, "actions": names, "steps": steps, "bytes": bytes.len(), "skipped": skipped});
     match p.get("path") {
         None | Some(Value::Null) => {
-            out["data"] = json!(photocraft_paint::tile::b64_encode(&bytes));
+            out["data"] = json!(oracle_edit_paint::tile::b64_encode(&bytes));
         }
         Some(Value::String(path)) if !path.trim().is_empty() => {
             write_file(path, &bytes).map_err(|e| EngineError::Other(format!("{path}: {e}")))?;
@@ -3770,7 +3770,7 @@ fn save(s: &mut Session, p: &Value) -> Result<Value> {
 #[cfg(not(target_arch = "wasm32"))]
 fn write_file(path: &str, bytes: &[u8]) -> std::io::Result<()> {
     // Atomic replacement (temporary file + rename): a failed write keeps the previous ATN (#7290).
-    photocraft_format::atomic_write(std::path::Path::new(path), bytes)
+    oracle_edit_format::atomic_write(std::path::Path::new(path), bytes)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -3790,7 +3790,7 @@ fn stop_message(_: &mut Session, p: &Value) -> Result<Value> {
 fn photoshop_step_run(_: &mut Session, p: &Value) -> Result<Value> {
     let name = jstr(p, "name").filter(|n| !n.is_empty()).unwrap_or("this step");
     let event = jstr(p, "event").unwrap_or("?");
-    Err(EngineError::Other(format!("Photoshop step \"{name}\" ({event}) has no PhotoCraft equivalent yet; switch it off in the Actions panel to skip it")))
+    Err(EngineError::Other(format!("Photoshop step \"{name}\" ({event}) has no Oracle Edit equivalent yet; switch it off in the Actions panel to skip it")))
 }
 
 pub fn specs() -> Vec<CommandSpec> {
@@ -3800,7 +3800,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Load Actions…",
             menu: &[],
             shortcut: None,
-            params: r##"{"path":".atn file"?,"data":base64 bytes?,"set":name? (override the file's set name),"replace":bool=true (replace the actions of a set of the same name)} → {set, actions:[names], steps, unsupported:[{action, step, event, name}], functionKeys:[{action, key}], warnings}. Photoshop steps PhotoCraft cannot play become actions.photoshopStep steps (kept for Save Actions; they fail at playback with the step's name); tool selections and other steps with no document effect are imported switched off. Layer references by name replay in any document."##,
+            params: r##"{"path":".atn file"?,"data":base64 bytes?,"set":name? (override the file's set name),"replace":bool=true (replace the actions of a set of the same name)} → {set, actions:[names], steps, unsupported:[{action, step, event, name}], functionKeys:[{action, key}], warnings}. Photoshop steps Oracle Edit cannot play become actions.photoshopStep steps (kept for Save Actions; they fail at playback with the step's name); tool selections and other steps with no document effect are imported switched off. Layer references by name replay in any document."##,
             enabled: always,
             run: load,
             journal: false,
@@ -3810,7 +3810,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Save Actions…",
             menu: &[],
             shortcut: None,
-            params: r##"{"path":".atn file"? (else the bytes come back as base64 `data`),"set":name? (that set's actions; default: every action, as the set "PhotoCraft Actions"),"action":name|index? (one action),"skipUnsupported":bool=false (leave out steps with no Photoshop equivalent instead of failing)} → {set, actions:[names], steps, bytes, skipped:[{action, step, id}], path|data}"##,
+            params: r##"{"path":".atn file"? (else the bytes come back as base64 `data`),"set":name? (that set's actions; default: every action, as the set "Oracle Edit Actions"),"action":name|index? (one action),"skipUnsupported":bool=false (leave out steps with no Photoshop equivalent instead of failing)} → {set, actions:[names], steps, bytes, skipped:[{action, step, id}], path|data}"##,
             enabled: always,
             run: save,
             journal: false,
@@ -3830,7 +3830,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Photoshop Step",
             menu: &[],
             shortcut: None,
-            params: r##"{"event":id,"name":str,"descriptor":base64?} (a step from a .atn file PhotoCraft has no command for: fails at playback, written back by actions.save)"##,
+            params: r##"{"event":id,"name":str,"descriptor":base64?} (a step from a .atn file Oracle Edit has no command for: fails at playback, written back by actions.save)"##,
             enabled: always,
             run: photoshop_step_run,
             journal: true,

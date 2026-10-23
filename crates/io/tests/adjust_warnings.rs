@@ -1,12 +1,12 @@
 //! Opening a file whose adjustment layer can't be read warns, naming the layer and the reason,
 //! instead of opening it silently without its effect (#1763).
 
-use photocraft_color::{ColorMode, SampleType};
-use photocraft_doc::{Adjustment, Document, Layer, LayerContent};
-use photocraft_geom::Size;
-use photocraft_io::*;
-use photocraft_psd::descriptor::{Descriptor, Id, UnicodeString, Value, VersionedDescriptor};
-use photocraft_raster::Surface;
+use oracle_edit_color::{ColorMode, SampleType};
+use oracle_edit_doc::{Adjustment, Document, Layer, LayerContent};
+use oracle_edit_geom::Size;
+use oracle_edit_io::*;
+use oracle_edit_psd::descriptor::{Descriptor, Id, UnicodeString, Value, VersionedDescriptor};
+use oracle_edit_raster::Surface;
 
 fn reopen(adj: Adjustment, path: &str, opts: &ExportOptions) -> (Document, Vec<String>) {
     let mut d = Document::new("a", Size::new(16, 16), ColorMode::Rgb, SampleType::U8);
@@ -86,7 +86,7 @@ fn photoshop_layout_color_lookup_round_trips_through_psb() {
     let mut bg = Surface::new(d.pixel_format());
     bg.fill_rect(d.bounds(), &[1.0, 0.0, 0.0, 1.0]);
     d.layers.insert(0, Layer::new("bg", LayerContent::Raster(bg)));
-    let px = photocraft_compose::flatten(&d).px[0];
+    let px = oracle_edit_compose::flatten(&d).px[0];
     assert!(px[0] < 0.05 && (px[1] - 1.0).abs() < 0.05 && (px[2] - 1.0).abs() < 0.05, "{px:?}");
 }
 

@@ -612,6 +612,12 @@ pub const PLACE_EMBEDDED: &str = "Place Embedded";
 /// With Preferences ▸ General ▸ Always Create Smart Objects When Placing off, an embedded place
 /// lands as a plain pixel layer instead (an explicit `"smartObject": false` asks for one).
 pub fn place_bytes(s: &mut Session, name: &str, bytes: Vec<u8>, linked: Option<String>, p: &Value) -> Result<Value> {
+    // Another Oracle app's document (`name` is its path): placed as the drawing its app makes,
+    // an SVG for Oracle Vector, so a vector smart object. A linked one keeps the original's path.
+    if let Some(drawing) = crate::oracle_files::drawn(name) {
+        let (drawn_name, drawn_bytes) = drawing?;
+        return place_bytes(s, &drawn_name, drawn_bytes, linked, p);
+    }
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let (cw, ch) = (d.doc.size.width as f64, d.doc.size.height as f64);
     let fmt = d.doc.pixel_format();

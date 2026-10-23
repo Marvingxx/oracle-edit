@@ -4649,6 +4649,7 @@ dependencies = [
  "oracle-edit-raw",
  "oracle-edit-text",
  "oracle-edit-vector",
+ "oracle-suite-link",
  "rayon",
  "roxmltree 0.20.0",
  "same-file",
@@ -4963,8 +4964,18 @@ dependencies = [
  "image",
  "log",
  "oracle-library",
+ "oracle-suite-link",
  "resvg",
  "rfd",
+ "winsafe",
+]
+
+[[package]]
+name = "oracle-suite-link"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "log",
 ]
 
 [[package]]

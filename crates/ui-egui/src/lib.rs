@@ -93,6 +93,8 @@ pub mod eyedropper_ui;
 pub mod field_tab;
 pub mod file_dialog;
 pub mod file_open;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod library_send;
 pub mod file_ui;
 pub mod fill_ui;
 pub mod filter_dialog;
@@ -2166,9 +2168,16 @@ impl eframe::App for OracleEditApp {
 
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         let frame_start = gpu_canvas::now_ms();
-        // Assets dragged out of the Oracle Library window arrive as dropped files.
+        // Files dropped on the Oracle Library window go into the library, not onto the document;
+        // assets dragged out of it arrive as dropped files.
         #[cfg(not(target_arch = "wasm32"))]
-        self.oracle_library.inject_drops(raw_input);
+        {
+            if !raw_input.dropped_files.is_empty() {
+                let at = self.services.cursor_pos.as_mut().and_then(|f| f(ctx));
+                self.oracle_library.claim_drops(raw_input, at);
+            }
+            self.oracle_library.inject_drops(raw_input);
+        }
         // An undecorated window gets its caption back when the toolkit changes its flags
         // (maximize, restore, …): take it off again before the frame is laid out (#2246).
         if let Some(window_frame) = self.services.window_frame.as_mut() {

@@ -90,9 +90,20 @@ fn read_file(path: &str) -> Option<Vec<u8>> {
 /// import keeps the placed layer's uuid as the path), or a linked file on disk.
 pub fn source_bytes(meta: &Metadata, src: &SmartSource) -> Option<(String, Arc<Vec<u8>>)> {
     embedded_source_bytes(meta, src).or_else(|| match src {
-        SmartSource::Linked { path } => read_file(path).map(|b| (base_name(path), Arc::new(b))),
+        SmartSource::Linked { path } => linked_file(path),
         SmartSource::Embedded { .. } => None,
     })
+}
+
+/// A linked file as its smart object reads it: its bytes, or for another Oracle app's document
+/// (`.oracle-vector`…) the drawing that app makes of it, named for its format (`logo.svg`).
+fn linked_file(path: &str) -> Option<(String, Arc<Vec<u8>>)> {
+    if crate::oracle_files::is_foreign(path) {
+        let resolved = crate::doc_path::resolve(path).ok()?;
+        let (name, bytes) = crate::oracle_files::drawn(&resolved.to_string_lossy())?.ok()?;
+        return Some((name, Arc::new(bytes)));
+    }
+    read_file(path).map(|b| (base_name(path), Arc::new(b)))
 }
 
 /// Memory-only resolution also covers Photoshop's embedded files addressed by a `Linked` UUID.
@@ -113,7 +124,7 @@ fn authorized_source_bytes(s: &Session, cmd: &str, meta: &Metadata, src: &SmartS
     if let Some(gate) = s.authorize {
         gate(cmd, &json!({"path": path}))?;
     }
-    Ok(read_file(path).map(|b| (base_name(path), Arc::new(b))))
+    Ok(linked_file(path))
 }
 
 /// Recheck a source's actual path before an untrusted command reads it: the path lives in the

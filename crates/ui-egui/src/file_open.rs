@@ -119,6 +119,13 @@ impl OracleEditApp {
         if self.show_if_open(path) {
             return Ok(Vec::new());
         }
+        // Another Oracle app's document (an `.oracle-vector` logo): a new untitled document with it
+        // placed, linked, so it stays live and a save never writes over it in another format.
+        if oracle_edit_engine::oracle_files::is_foreign(path) {
+            oracle_edit_engine::oracle_files::open(&mut self.session, path).map_err(|e| e.to_string())?;
+            self.sync_views();
+            return Ok(Vec::new());
+        }
         // Documents opening in the background are read on the worker too (a 2 GB PSB read
         // would block the window). Preset files (brushes, gradients) go the usual way.
         let ext = std::path::Path::new(path).extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
@@ -289,7 +296,10 @@ impl OracleEditApp {
             let Some(next) = self.drop_places.pop_front() else { return };
             let (name, placed) = match next {
                 DropPlace::File(f) if f.path().is_absolute() => {
-                    (dropped_name(&f), self.run("file.placeEmbedded", serde_json::json!({"path": f.path().to_string_lossy()})))
+                    // Another Oracle app's document stays live: placed linked, it follows its saves.
+                    let path = f.path().to_string_lossy().into_owned();
+                    let cmd = if oracle_edit_engine::oracle_files::is_foreign(&path) { "file.placeLinked" } else { "file.placeEmbedded" };
+                    (dropped_name(&f), self.run(cmd, serde_json::json!({"path": path})))
                 }
                 DropPlace::File(f) => {
                     let name = dropped_name(&f);

@@ -309,6 +309,11 @@ pub(crate) fn invoke_unguarded(app: &mut OracleEditApp, ctx: &egui::Context, id:
             app.oracle_library.toggle();
             Ok(Value::Null)
         }
+        "file.addToLibrary" => {
+            #[cfg(not(target_arch = "wasm32"))]
+            crate::library_send::add_active(app)?;
+            Ok(Value::Null)
+        }
         "view.darkenInterface" | "view.lightenInterface" => {
             crate::prefs_ui::step_brightness(app, ctx, id == "view.lightenInterface")?;
             Ok(json!({"theme": app.ui.theme.id()}))
@@ -729,6 +734,7 @@ pub fn is_enabled(app: &OracleEditApp, id: &str) -> bool {
         "window.panel.group" | "window.panel.move" | "window.panel.float" | "window.panel.dock" | "window.panel.close" => !app.session.prefs().workspace_locked,
         "file.open" | "file.exit" | "file.clearRecent" | "file.removeRecent" | "help.about" | "help.systemInfo" | "edit.search" => true,
         "window.oracleLibrary" => !cfg!(target_arch = "wasm32"),
+        "file.addToLibrary" => !cfg!(target_arch = "wasm32") && app.session.active().is_some(),
         i if i.starts_with("file.openRecent.") => true,
         i if i.starts_with(DOCUMENT_ITEM) => true,
         i if crate::links::url_for(i).is_some() => true,

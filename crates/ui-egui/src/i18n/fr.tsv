@@ -3324,3 +3324,5 @@ curves	Smooth	Lisser
 # Oracle: the asset library and the interface fonts (font names kept)
 	Lexend	Lexend
 	Inter	Inter
+@plural	Updated {n} linked smart object changed on disk|Updated {n} linked smart objects changed on disk	{n} objet dynamique lié mis à jour (fichier modifié)|{n} objets dynamiques liés mis à jour (fichiers modifiés)
+	Add to Oracle Library	Ajouter à la Bibliothèque Oracle

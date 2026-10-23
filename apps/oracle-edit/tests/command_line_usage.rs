@@ -14,7 +14,7 @@ fn run_oracle_edit(args: &[&str]) -> (std::process::ExitStatus, String, String) 
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("oracle-edit-usage-{}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_oracle_edit"))
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_oracle-edit"))
         .args(args)
         .env("ORACLE_EDIT_CONFIG_DIR", &dir)
         .env_remove("ORACLE_EDIT_CONTROL_PORT")

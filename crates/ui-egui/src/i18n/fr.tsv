@@ -3326,3 +3326,4 @@ curves	Smooth	Lisser
 	Inter	Inter
 @plural	Updated {n} linked smart object changed on disk|Updated {n} linked smart objects changed on disk	{n} objet dynamique lié mis à jour (fichier modifié)|{n} objets dynamiques liés mis à jour (fichiers modifiés)
 	Add to Oracle Library	Ajouter à la Bibliothèque Oracle
+	Vector Smart Object	Objet dynamique vectoriel

@@ -455,6 +455,8 @@ pub type ClipboardSetFn = Box<dyn FnMut(u32, u32, &[u8]) -> Result<(), String>>;
 /// Read an RGBA8 image from the OS clipboard. `Ok(None)` means no image is available;
 /// `Err` means the contents could not be read and must not invalidate the internal copy.
 pub type ClipboardGetFn = Box<dyn FnMut() -> Result<Option<(u32, u32, Vec<u8>)>, String>>;
+/// The SVG markup on the OS clipboard, if another app put some there (Oracle Vector, the Brand Guide).
+pub type ClipboardSvgFn = Box<dyn FnMut() -> Option<String>>;
 /// Whether the last clipboard read found no way to reach the OS clipboard at all.
 pub type ClipboardUnreadableFn = Box<dyn Fn() -> bool>;
 /// Shared queue of (file name, bytes) delivered asynchronously.
@@ -563,6 +565,8 @@ pub struct Services {
     /// OS clipboard images: copies go out, screenshots and images from other apps come in.
     pub clipboard_set_image: Option<ClipboardSetFn>,
     pub clipboard_get_image: Option<ClipboardGetFn>,
+    /// Artwork copied in a vector app (Oracle Vector): pasted as a vector smart object.
+    pub clipboard_get_svg: Option<ClipboardSvgFn>,
     /// True when the last `clipboard_get_image` read had no clipboard to read, as in a Flatpak on
     /// Wayland (#5031), rather than a clipboard that holds no image. `None` where that can't happen.
     pub clipboard_unreadable: Option<ClipboardUnreadableFn>,
@@ -1252,6 +1256,19 @@ impl OracleEditApp {
             return r;
         }
         let t0 = gpu_canvas::now_ms();
+        // Artwork copied in Oracle Vector (SVG on the clipboard) pastes as a vector smart object, as
+        // Photoshop pastes Illustrator art: sharp at any size, in Free Transform.
+        if id == "edit.paste"
+            && self.ui.text_edit.is_none()
+            && self.session.active().is_some()
+            && let Some(svg) = self.services.clipboard_get_svg.as_mut().and_then(|read| read())
+        {
+            // Placed like a file dropped on the canvas: a smart object (Preferences › General ›
+            // Always Create Smart Objects When Placing), then Free Transform, at the end of this frame.
+            let name = format!("{}.svg", tl!("Vector Smart Object"));
+            self.drop_places.push_back(crate::file_open::DropPlace::Bytes(name, svg.into_bytes()));
+            return Ok(serde_json::json!({"pasted": true, "vector": true}));
+        }
         // The OS clipboard is read only on an explicit paste, never in the background (privacy, CPU).
         if matches!(id, "edit.paste" | "edit.pasteSpecial.pasteInPlace" | "file.newFromClipboard") {
             if !clip_read {
@@ -3190,6 +3207,25 @@ mod clipboard_tests {
         let st = app.session.active().unwrap();
         let surf = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap();
         assert_eq!(surf.content_bounds().width(), 3);
+    }
+
+    /// Artwork copied in Oracle Vector (SVG on the clipboard) pastes as a vector smart object in
+    /// Free Transform, as Photoshop pastes Illustrator art, not as pixels.
+    #[test]
+    fn artwork_copied_in_a_vector_app_pastes_as_a_vector_smart_object() {
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#d31c3b"/></svg>"##;
+        let services = Services { clipboard_get_svg: Some(Box::new(move || Some(svg.to_string()))), ..Default::default() };
+        let mut app = OracleEditApp::new(Session::new(), services);
+        app.session.execute("file.new", serde_json::json!({"width": 200, "height": 100})).unwrap();
+        app.sync_views();
+        assert_eq!(app.run("edit.paste", serde_json::json!({})).unwrap()["vector"], true);
+        app.place_next_dropped(&egui::Context::default());
+        let st = app.session.active().unwrap();
+        let layer = st.doc.layer(st.active_layer.unwrap()).unwrap();
+        let oracle_edit_doc::LayerContent::Smart(sm) = &layer.content else { panic!("a smart object: {:?}", layer.name) };
+        let oracle_edit_doc::SmartSource::Embedded { file_name, bytes } = &sm.source else { panic!("embedded") };
+        assert!(file_name.ends_with(".svg") && bytes.starts_with(b"<svg"), "{file_name}");
+        assert!(app.ui.transform.is_some(), "in Free Transform, as a place");
     }
 
     #[test]

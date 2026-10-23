@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use serde_json::{Value, json};
 
 fn bin() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_oracle_edit-cli"))
+    Command::new(env!("CARGO_BIN_EXE_oracle-edit-cli"))
 }
 
 fn tmp(name: &str) -> PathBuf {

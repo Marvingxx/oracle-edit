@@ -384,6 +384,32 @@ fn with_store<R>(store: &SharedRecovery, f: impl FnOnce(&mut RecoveryStore) -> R
 /// Crash recovery: background incremental .pcraft autosaves into `dir` (`None`: no config
 /// directory, so autosaves fail and nothing is recovered). Recovered documents keep their entries
 /// until a newer autosave replaces them or they're saved or closed (see [`RecoveryStore`]).
+/// Reads the SVG markup another app (Oracle Vector, the Brand Guide) put on the clipboard under the
+/// registered "image/svg+xml" format. Windows only for now; elsewhere pasting reads images as before.
+#[cfg(target_os = "windows")]
+fn clipboard_svg_service() -> Option<oracle_edit_ui_egui::ClipboardSvgFn> {
+    Some(Box::new(|| {
+        use clipboard_win::raw;
+        let format = raw::register_format("image/svg+xml")?.get();
+        let _open = clipboard_win::Clipboard::new_attempts(10).ok()?;
+        if !raw::is_format_avail(format) {
+            return None;
+        }
+        let mut data = Vec::new();
+        raw::get_vec(format, &mut data).ok()?;
+        // Memory blocks can be longer than the data: the text ends at its first NUL.
+        if let Some(end) = data.iter().position(|b| *b == 0) {
+            data.truncate(end);
+        }
+        String::from_utf8(data).ok().filter(|s| s.contains("<svg"))
+    }))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn clipboard_svg_service() -> Option<oracle_edit_ui_egui::ClipboardSvgFn> {
+    None
+}
+
 fn recovery_services(dir: Option<PathBuf>) -> Services {
     let recover_dir = dir.clone();
     let store: SharedRecovery = Rc::new(RefCell::new(dir.map(RecoveryStore::new)));
@@ -558,6 +584,7 @@ pub fn native(automation: Option<oracle_edit_automation::AuthorizedWorkspace>) -
         inbox: None,
         open_url: Some(Box::new(|url: &str| open::that(url).map_err(|e| e.to_string()))),
         beep: Some(platform_beep),
+        clipboard_get_svg: clipboard_svg_service(),
         clipboard_set_image: Some({
             let clip = clip.clone();
             Box::new(move |w: u32, h: u32, px: &[u8]| {

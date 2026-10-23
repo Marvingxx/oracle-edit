@@ -95,6 +95,10 @@ pub mod file_dialog;
 pub mod file_open;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod library_send;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod edit_original;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod send_to;
 pub mod file_ui;
 pub mod fill_ui;
 pub mod filter_dialog;
@@ -769,6 +773,9 @@ pub struct OracleEditApp {
     pub(crate) tab_strip: Option<canvas::TabStrip>,
     /// Files dropped on the canvas still to place, one Free Transform at a time.
     pub(crate) drop_places: std::collections::VecDeque<file_open::DropPlace>,
+    /// When the Oracle inbox (Send to from the other Oracle apps) was last looked at.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) inbox_last: f64,
     /// The document each of `ui.views` belongs to, as of the last [`Self::sync_views`].
     view_docs: Vec<DocId>,
     pub fps: f32,
@@ -1015,6 +1022,8 @@ impl OracleEditApp {
             drop_canvas_rect: None,
             tab_strip: None,
             drop_places: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            inbox_last: f64::NEG_INFINITY,
             view_docs: Vec::new(),
             fps: 0.0,
             last_frame_time: 0.0,
@@ -1256,6 +1265,14 @@ impl OracleEditApp {
             return r;
         }
         let t0 = gpu_canvas::now_ms();
+        // Edit Contents of a smart object linked to another Oracle app's document (an Oracle Vector
+        // logo) opens that document in its app; saving it there updates the layer here.
+        #[cfg(not(target_arch = "wasm32"))]
+        if id == "layer.smartObjects.editContents"
+            && let Some(r) = crate::edit_original::open(self, &params)
+        {
+            return r;
+        }
         // Artwork copied in Oracle Vector (SVG on the clipboard) pastes as a vector smart object, as
         // Photoshop pastes Illustrator art: sharp at any size, in Free Transform.
         if id == "edit.paste"
@@ -2173,6 +2190,9 @@ impl eframe::App for OracleEditApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
         self.place_next_dropped(ctx);
+        // What the other Oracle apps sent (Send to): placed, linked.
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::send_to::poll(self, ctx);
         #[cfg(not(target_arch = "wasm32"))]
         self.oracle_library.ui(ctx, i18n::current().code() == "fr");
         // The control transport wakes the UI on arrival (ctx.request_repaint); only poll while a

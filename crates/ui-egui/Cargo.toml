@@ -44,6 +44,8 @@ flate2 = { workspace = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # The Oracle Library window: the user's asset folder, searchable, dragged onto the document.
 oracle-library-ui = { path = "../../../oracle-library/ui" }
+# Edit Contents of another Oracle app's document opens it in that app (edit_original.rs).
+oracle-suite-link = { path = "../../../oracle-library/link" }
 rayon = { workspace = true }
 # Safe native UI-language APIs (Windows/macOS); no subprocess or web dependency.
 sys-locale = "=0.3.2"

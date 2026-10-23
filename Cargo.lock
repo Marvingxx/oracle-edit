@@ -4456,7 +4456,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "oracle-edit"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "arboard",
  "async-io",
@@ -4502,7 +4502,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-affinity"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "crc32fast",
  "flate2",
@@ -4512,7 +4512,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-algo"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-color",
  "oracle-edit-geom",
@@ -4525,7 +4525,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-automation"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "base64 0.22.1",
  "cap-std",
@@ -4548,7 +4548,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-cli"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-automation",
  "oracle-edit-codecs",
@@ -4562,7 +4562,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-cms"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "moxcms",
  "rayon",
@@ -4570,7 +4570,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-codecs"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "exr",
  "flate2",
@@ -4591,7 +4591,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-color"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-cms",
  "serde",
@@ -4599,7 +4599,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-compose"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "criterion",
  "oracle-edit-color",
@@ -4614,7 +4614,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-doc"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-color",
  "oracle-edit-geom",
@@ -4625,7 +4625,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-engine"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "blake3",
  "craft-print",
@@ -4664,7 +4664,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-format"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "blake3",
  "crc32fast",
@@ -4687,14 +4687,14 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-geom"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "oracle-edit-gpu"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "half",
  "log",
@@ -4712,14 +4712,14 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-heif"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "heic-rs",
 ]
 
 [[package]]
 name = "oracle-edit-io"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "blake3",
  "craft-docpath",
@@ -4749,18 +4749,18 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-ipp"
-version = "0.12.0"
+version = "0.13.0"
 
 [[package]]
 name = "oracle-edit-ops"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-doc",
 ]
 
 [[package]]
 name = "oracle-edit-paint"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-color",
  "oracle-edit-geom",
@@ -4771,7 +4771,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-plugins"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-color",
  "oracle-edit-geom",
@@ -4786,7 +4786,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-psd"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "flate2",
  "oracle-edit-psd",
@@ -4797,7 +4797,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-raster"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-color",
  "oracle-edit-geom",
@@ -4808,7 +4808,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-raw"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "flate2",
  "image",
@@ -4823,7 +4823,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-tablet"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "block2 0.6.2",
  "objc2 0.6.4",
@@ -4835,7 +4835,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-testkit"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "memory-stats",
  "oracle-edit-color",
@@ -4846,7 +4846,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-text"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "flate2",
  "oracle-edit-color",
@@ -4861,7 +4861,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-ui-egui"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "base64 0.22.1",
  "craft-print",
@@ -4904,7 +4904,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-vector"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "oracle-edit-color",
  "oracle-edit-doc",
@@ -4915,7 +4915,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-web"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "eframe",
  "egui",
@@ -4937,7 +4937,7 @@ dependencies = [
 
 [[package]]
 name = "oracle-edit-web-boot"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "flate2",
  "js-sys",
@@ -8796,7 +8796,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "serde",
  "serde_json",

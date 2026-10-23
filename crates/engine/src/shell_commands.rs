@@ -62,6 +62,7 @@ pub const SHELL_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("file.addToLibrary", "Add to Oracle Library", &["File"], None),
     ("file.sendToVector", "Send to Oracle Vector", &["File"], None),
     ("file.sendToGuide", "Send to Oracle Brand Guide", &["File"], None),
+    ("file.sendToMotion", "Send to Oracle Motion", &["File"], None),
     ("window.toggle.toolbar", "Tools", &["Window"], None),
     // Photoshop's Tab and ⇧Tab: all panels (Tools, options bar and the dock), or only the dock.
     ("window.togglePanels", "Show/Hide All Panels", &[], Some("Tab")),

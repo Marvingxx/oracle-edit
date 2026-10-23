@@ -153,14 +153,13 @@
       </Component>
 
       <!-- Licences: the app's, and those of the fonts built into it (OFL-1.1 asks that they ship with them). -->
-      <Component Id="OracleEditLicences">
-        <File Id="LicenseMit" Source="$(var.RootDir)\LICENSE-MIT" Name="LICENSE-MIT.txt" KeyPath="yes" />
-        <File Id="LicenseApache" Source="$(var.RootDir)\LICENSE-APACHE" Name="LICENSE-APACHE.txt" />
-        <File Id="Notice" Source="$(var.RootDir)\NOTICE" Name="NOTICE.txt" />
-        <File Id="OflInter" Source="$(var.RootDir)\assets\fonts\OFL-Inter.txt" />
-        <File Id="OflJetBrainsMono" Source="$(var.RootDir)\assets\fonts\OFL-JetBrainsMono.txt" />
-        <File Id="OflLexend" Source="$(var.RootDir)\assets\fonts\OFL-Lexend.txt" />
-      </Component>
+      <!-- One file per component: unversioned files can't share one with a generated guid. -->
+      <Component Id="LicenseMit"><File Id="LicenseMit" Source="$(var.RootDir)\LICENSE-MIT" Name="LICENSE-MIT.txt" KeyPath="yes" /></Component>
+      <Component Id="LicenseApache"><File Id="LicenseApache" Source="$(var.RootDir)\LICENSE-APACHE" Name="LICENSE-APACHE.txt" KeyPath="yes" /></Component>
+      <Component Id="Notice"><File Id="Notice" Source="$(var.RootDir)\NOTICE" Name="NOTICE.txt" KeyPath="yes" /></Component>
+      <Component Id="OflInter"><File Id="OflInter" Source="$(var.RootDir)\assets\fonts\OFL-Inter.txt" KeyPath="yes" /></Component>
+      <Component Id="OflJetBrainsMono"><File Id="OflJetBrainsMono" Source="$(var.RootDir)\assets\fonts\OFL-JetBrainsMono.txt" KeyPath="yes" /></Component>
+      <Component Id="OflLexend"><File Id="OflLexend" Source="$(var.RootDir)\assets\fonts\OFL-Lexend.txt" KeyPath="yes" /></Component>
     </ComponentGroup>
   </Fragment>
 </Wix>

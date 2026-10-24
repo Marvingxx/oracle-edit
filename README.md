@@ -239,10 +239,10 @@ cargo run --release -p oracle-edit -- image.psd   # the desktop app
 cargo test --workspace                           # the test suite
 ```
 
-Japanese fonts for the UI and Type tool come from [craft-fonts](https://github.com/storytold/craft-fonts), an optional build input (desktop release builds always include it). Without it Oracle Edit uses your system's CJK fonts:
+Japanese fonts for the UI and Type tool come from [craft-fonts](https://github.com/Marvingxx/craft-fonts), an optional build input (desktop release builds always include it). Without it Oracle Edit uses your system's CJK fonts:
 
 ```sh
-git clone https://github.com/storytold/craft-fonts ../craft-fonts
+git clone https://github.com/Marvingxx/craft-fonts ../craft-fonts
 CRAFT_FONTS_DIR="$PWD/../craft-fonts" cargo run --release -p oracle-edit
 ```
 
@@ -371,14 +371,18 @@ Oracle Edit is part of **Oracle**, a personal creative suite, free and local:
 | **Oracle Brand Kit** · **Oracle Mockup Studio** | Brand identities and client deliveries · 2D mockups | [oracle-brand](https://github.com/Marvingxx/oracle-brand) |
 | **Oracle Brand Guide** | Brand guidelines and page layout | [oracle-guide](https://github.com/Marvingxx/oracle-guide) |
 
-Oracle Edit started as a fork of [PhotoCraft](https://github.com/storytold/photocraft) by the ArtCraft
-team (MIT OR Apache-2.0), taken on 22 October 2026 and developed separately since. It is not
-affiliated with or endorsed by ArtCraft.
+
+## Sources
+
+Oracle Edit is built on [PhotoCraft](https://github.com/storytold/photocraft) by storytold (MIT OR
+Apache-2.0), taken on 22 October 2026 and developed separately since; its code, rewritten or not, keeps
+that licence and the original notices (`NOTICE`, `LICENSE-*`). Every other source (fonts, icons,
+libraries, images) is listed with its author and licence in the attribution file.
 
 ## License and credits
 
 Oracle Edit is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
-Copyright (c) 2026 ArtCraft Team and the Oracle Edit contributors. Required notices are in [NOTICE](NOTICE).
+Required notices are in [NOTICE](NOTICE).
 
 Bundled fonts, icons, images and other assets keep their own open licenses; each one is listed
 with its author, source and license in [ATTRIBUTION.md](ATTRIBUTION.md).
@@ -386,8 +390,7 @@ with its author, source and license in [ATTRIBUTION.md](ATTRIBUTION.md).
 Every artwork shown is in the public domain (Wikimedia Commons, NASA, U.S. National Archives); sources are listed in [`docs/images/SOURCES.md`](docs/images/SOURCES.md).
 
 The Oracle name and logo in [`docs/brand/`](docs/brand/) are the project's brand marks and are not
-covered by this license (see [`docs/brand/LICENSE-brand.txt`](docs/brand/LICENSE-brand.txt)). The
-ArtCraft marks of the original project have been removed, as its brand license asks of forks.
+covered by this license (see [`docs/brand/LICENSE-brand.txt`](docs/brand/LICENSE-brand.txt)).
 
 <sub>Adobe, Photoshop, Illustrator, Premiere Pro, Lightroom, Acrobat, After Effects and InDesign are trademarks or registered trademarks of Adobe Inc. in the United States and/or other countries. Oracle Edit is an independent, open-source project and is not affiliated with, sponsored by or endorsed by Adobe Inc.; these names are used only to describe the workflows it is compatible with.</sub>
 

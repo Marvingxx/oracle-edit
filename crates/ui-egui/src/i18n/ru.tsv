@@ -13,7 +13,7 @@
 # graphics-editor vocabulary (Слой, Каналы, Маска, Выделение, Кривые ...), matching Photoshop's
 # Russian menu tradition where it is unambiguous. No proprietary localisation resource was
 # consulted or copied; entries are added the same way.
-# Product and technology names (Oracle Edit, ArtCraft, OpenType, CMYK, Lab ...) stay in Latin
+# Product and technology names (Oracle Edit, Oracle, OpenType, CMYK, Lab ...) stay in Latin
 # letters; the trailing "…" of dialog commands is kept; the colon of a label ("Width:") becomes
 # the Russian typographic equivalent, with the space the source carries.
 
@@ -534,8 +534,6 @@
 	Oracle Edit Website	Сайт Oracle Edit
 	Oracle Edit on GitHub	Oracle Edit на GitHub
 	Report an Issue…	Сообщить о проблеме…
-	ArtCraft Website	Сайт ArtCraft
-	Join the ArtCraft Discord…	Discord сообщества ArtCraft…
 	System Info…	Информация о системе…
 
 # Tools and options bar
@@ -1676,9 +1674,7 @@
 	Preserve Transparency	Сохранить прозрачность
 	Reverse	Обратить
 	Align with layer	По слою
-	Join us on Discord	Мы в Discord
 	Oracle Edit website	Сайт Oracle Edit
-	ArtCraft	ArtCraft
 	GitHub	GitHub
 	No character style	Нет стиля символов
 	No author	Нет автора
@@ -2103,7 +2099,6 @@
 	Delete tool preset	Удалить набор инструментов
 	Depth Jitter	Колебание глубины
 	Discontiguous	Несмежные пикселы
-	Discord	Discord
 	Display P3	Display P3
 	Display Text	Показывать текст
 	Divide…	Деление…

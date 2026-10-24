@@ -9,6 +9,6 @@ Yes. Oracle Edit is one of the Crafting Apps, which the project describes as fre
 
 Oracle Edit works offline. Its smart selection tools run on your computer, with no cloud and no account.
 
-The ArtCraft logos in the repository are not open source.
+The Oracle logos in the repository are not open source.
 
 See [Install Oracle Edit](../getting-started/install.md) to download it.

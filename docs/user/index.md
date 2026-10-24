@@ -18,8 +18,8 @@ It is a native app written in Rust that draws the canvas on your graphics card, 
 
 ## Part of the Craft App Suite
 
-Oracle Edit is one of the Crafting Apps from the ArtCraft team, next to VectorCraft, FilmCraft and the other Craft apps. You can install and update them from [ArtCraft Launcher](https://getartcraft.com/docs/craft-launcher).
+Oracle Edit is one of the Oracle apps, next to Oracle Vector, Oracle Motion, Oracle Video and the others. You can install and update them from [Oracle Suite](https://github.com/Marvingxx/oracle-suite).
 
 ## Get help
 
-Ask in [Discord](https://discord.gg/artcraft) or open an issue in the [issue tracker](https://github.com/Marvingxx/oracle-edit/issues). In Oracle Edit, **Help › Report an Issue…** opens the same issue tracker.
+Open an issue in the [issue tracker](https://github.com/Marvingxx/oracle-edit/issues). In Oracle Edit, **Help › Report an Issue…** opens the same issue tracker.

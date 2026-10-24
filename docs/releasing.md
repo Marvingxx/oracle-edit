@@ -62,7 +62,7 @@ Every binary reports its version, the commit and the build date: `oracle-edit --
 `ORACLE_EDIT_BUILD_DATE`, and `crates/engine/src/build_info.rs` reads them at compile time. A plain
 `cargo build` doesn't set them and reports `0.2.0 (dev build)`.
 
-Every desktop build job (macOS, Windows, Linux, FreeBSD) also checks out [craft-fonts](https://github.com/storytold/craft-fonts)
+Every desktop build job (macOS, Windows, Linux, FreeBSD) also checks out [craft-fonts](https://github.com/Marvingxx/craft-fonts)
 at the `craft-fonts-ref` commit in `.github/workflows/release.yml` and builds with `CRAFT_FONTS_DIR` and
 `CRAFT_FONTS_REQUIRED=1`, so desktop releases embed its Japanese fonts (the web build embeds none: see
 `docs/development.md` › Fonts) and fail rather than ship without them. The packages carry each font's licence as
@@ -326,9 +326,8 @@ The keychain is deleted at the end of the job.
 
 ## Icons
 
-`assets/app-icon/oracle-edit.svg` is the canonical icon: the owner's ArtCraft drawing of a
-nine-tailed kitsune, vectorised (MIT OR Apache-2.0, see `LICENSE.txt` there; palette and
-geometry in `README.md`). `packaging/icons.sh` regenerates the 1024 px PNG, the `.icns`, the `.ico` (packed by
+`assets/app-icon/oracle-edit.svg` is the canonical icon: the Oracle app tile ("Ed"), drawn by
+`Oracle-suite/tools/make_app_icon.py` (MIT OR Apache-2.0, see `LICENSE.txt` there). `packaging/icons.sh` regenerates the 1024 px PNG, the `.icns`, the `.ico` (packed by
 `cargo xtask ico`) and the hicolor PNGs from it. It needs `resvg`, plus `iconutil` on macOS.
 The outputs are committed, so packaging never needs those tools.
 

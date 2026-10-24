@@ -12,6 +12,13 @@ pub fn poll(app: &mut OracleEditApp, ctx: &egui::Context) {
     if cfg!(test) || app.services.file_stamp.is_none() {
         return;
     }
+    // Once: a background thread wakes the app when a brand changes (an idle app draws no frame).
+    let watching = egui::Id::new("oracle-brand-watch");
+    if !ctx.data(|d| d.get_temp::<bool>(watching).unwrap_or(false)) {
+        ctx.data_mut(|d| d.insert_temp(watching, true));
+        let waker = ctx.clone();
+        oracle_suite_link::brands::watch(move || waker.request_repaint());
+    }
     let id = egui::Id::new("oracle-brand-swatches");
     let now = ctx.input(|i| i.time);
     let (last, stamp) = ctx.data(|d| d.get_temp::<(f64, u64)>(id)).unwrap_or((f64::NEG_INFINITY, 0));

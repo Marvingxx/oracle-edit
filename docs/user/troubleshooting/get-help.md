@@ -5,7 +5,7 @@ order: 30
 verified: 0.8.2
 ---
 
-Open **Help › Report an Issue…**. It takes you to the [Oracle Edit issue tracker](https://github.com/Marvingxx/oracle-edit/issues) on GitHub. You can also ask in [Discord](https://discord.gg/artcraft).
+Open **Help › Report an Issue…**. It takes you to the [Oracle Edit issue tracker](https://github.com/Marvingxx/oracle-edit/issues) on GitHub.
 
 ## What to include
 

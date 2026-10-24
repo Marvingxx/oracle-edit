@@ -162,7 +162,7 @@ it is picked or a document's text needs it, so starting the app costs one small 
 
 1. Put the font files (`.ttf`, `.otf`, `.ttc`) anywhere under `fonts/` next to `index.html`.
 2. List them in `fonts/manifest.txt`, one file per line, in the format of
-   [craft-fonts](https://github.com/storytold/craft-fonts)' own `fonts/manifest.txt`:
+   [craft-fonts](https://github.com/Marvingxx/craft-fonts)' own `fonts/manifest.txt`:
 
    ```text
    # family | style | file (relative to the site root) | scripts | licence | licence file | sha256 | source

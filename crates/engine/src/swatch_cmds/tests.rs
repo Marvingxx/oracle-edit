@@ -1,5 +1,6 @@
 use super::*;
 use oracle_edit_paint::tile::{b64_decode, b64_encode};
+use oracle_suite_link::brands::{Brand, BrandColor};
 
 fn names(s: &Session) -> Vec<String> {
     s.presets.swatches.iter().flat_map(|g| g.items.iter().map(|i| i.name.clone())).collect()
@@ -418,4 +419,48 @@ fn values_beyond_f32_range_are_rejected_so_presets_survive_a_restart() {
     t.load_prefs_json(&s.prefs_to_json()).unwrap();
     assert_eq!(t.presets.swatches, s.presets.swatches, "user swatches survive a save and reload");
     assert!(names(&t).contains(&"Keep me".to_string()));
+}
+
+fn brand(name: &str, colors: &[(&str, [u8; 3])]) -> Brand {
+    Brand {
+        id: name.into(),
+        name: name.into(),
+        dir: std::path::PathBuf::from(name),
+        colors: colors
+            .iter()
+            .map(|(n, rgb)| BrandColor { id: (*n).into(), name: (*n).into(), hex: format!("#{:02X}{:02X}{:02X}", rgb[0], rgb[1], rgb[2]), rgb: *rgb, cmyk: None, pantone: String::new() })
+            .collect(),
+        logos: Vec::new(),
+        fonts: Vec::new(),
+    }
+}
+
+/// The brands of Oracle Brand Kit are swatch groups, first in the panel, kept as the brands are.
+#[test]
+fn brands_are_swatch_groups_that_follow_them() {
+    let mut s = Session::new();
+    let defaults = s.presets.swatches.clone();
+    let rev = s.prefs.rev();
+    assert!(sync_brands(&mut s, &[brand("Maison Été", &[("Rouge Été", [0xd3, 0x1c, 0x3b]), ("Black", [0x10, 0x18, 0x20])])]));
+    assert!(s.prefs.rev() > rev, "saved with the preferences");
+    let g = &s.presets.swatches[0];
+    assert_eq!(g.name, "Marque · Maison Été");
+    assert_eq!(g.items[0], Swatch::new("Rouge Été", SwatchColor::Rgb([0xd3 as f32 / 255.0, 0x1c as f32 / 255.0, 0x3b as f32 / 255.0])));
+    assert_eq!(g.items[1].name, "Black 2", "the default Black keeps its name");
+    assert_eq!(&s.presets.swatches[1..], &defaults[..]);
+    s.execute("swatches.use", json!({"swatch": "Rouge Été"})).unwrap();
+    assert!(s.execute("swatches.list", json!({})).unwrap().to_string().contains("#d31c3b"));
+    // Nothing changed: nothing to save.
+    let rev = s.prefs.rev();
+    assert!(!sync_brands(&mut s, &[brand("Maison Été", &[("Rouge Été", [0xd3, 0x1c, 0x3b]), ("Black", [0x10, 0x18, 0x20])])]));
+    assert_eq!(s.prefs.rev(), rev);
+    // The red changes in Brand Kit, and a second brand appears.
+    sync_brands(&mut s, &[brand("Maison Été", &[("Rouge Été", [0xff, 0, 0])]), brand("Atelier", &[("Bleu", [0, 0, 0xff])])]);
+    assert_eq!(s.presets.swatches[0].items, [Swatch::new("Rouge Été", SwatchColor::Rgb([1.0, 0.0, 0.0]))]);
+    assert_eq!(s.presets.swatches[1].name, "Marque · Atelier");
+    // A renamed brand group is the user's own; the brands gone, their groups go.
+    s.execute("swatches.renameGroup", json!({"group": "Marque · Atelier", "name": "Mes bleus"})).unwrap();
+    sync_brands(&mut s, &[]);
+    assert_eq!(s.presets.swatches[0].name, "Mes bleus");
+    assert_eq!(&s.presets.swatches[1..], &defaults[..]);
 }

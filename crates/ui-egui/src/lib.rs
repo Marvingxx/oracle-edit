@@ -99,6 +99,8 @@ pub mod library_send;
 pub mod edit_original;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod send_to;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod brand_swatches;
 pub mod file_ui;
 pub mod fill_ui;
 pub mod filter_dialog;
@@ -2193,6 +2195,9 @@ impl eframe::App for OracleEditApp {
         // What the other Oracle apps sent (Send to): placed, linked.
         #[cfg(not(target_arch = "wasm32"))]
         crate::send_to::poll(self, ctx);
+        // The brands of Oracle Brand Kit, as swatch groups.
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::brand_swatches::poll(self, ctx);
         #[cfg(not(target_arch = "wasm32"))]
         self.oracle_library.ui(ctx, i18n::current().code() == "fr");
         // The control transport wakes the UI on arrival (ctx.request_repaint); only poll while a

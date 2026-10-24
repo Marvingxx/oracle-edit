@@ -43,6 +43,48 @@ fn clip(s: &str) -> String {
     s.chars().take(MAX_NAME).collect()
 }
 
+/// The start of the name of a brand's swatch group: `Marque · Maison Été`.
+pub const BRAND_GROUP: &str = "Marque · ";
+
+/// Makes the Swatches panel's brand groups those of `brands` (Oracle Brand Kit, see
+/// `oracle_suite_link::brands`): one group per brand, first in the panel, its colours as RGB
+/// swatches named as in the brand (a number added when another swatch has the name). Brand groups
+/// of brands no longer listed are taken away. Returns whether the library changed (it is then
+/// saved with the preferences).
+pub fn sync_brands(s: &mut Session, brands: &[oracle_suite_link::brands::Brand]) -> bool {
+    let others: Vec<Group<Swatch>> = s.presets.swatches.iter().filter(|g| !g.name.starts_with(BRAND_GROUP)).cloned().collect();
+    let mut all = others.clone();
+    let mut groups: Vec<Group<Swatch>> = Vec::new();
+    for b in brands {
+        let mut name = clip(&format!("{BRAND_GROUP}{}", b.name.trim()));
+        let base = name.clone();
+        let mut n = 2;
+        while groups.iter().any(|g| g.name == name) {
+            name = format!("{base} ({n})");
+            n += 1;
+        }
+        all.push(Group::new(&name, Vec::new()));
+        for c in &b.colors {
+            let swatch_name = unique_name(&all, &clip(if c.name.trim().is_empty() { &c.hex } else { c.name.trim() }));
+            let rgb = c.rgb.map(|v| f32::from(v) / 255.0);
+            if let Some(g) = all.last_mut() {
+                g.items.push(Swatch::new(&swatch_name, SwatchColor::Rgb(rgb)));
+            }
+        }
+        if let Some(g) = all.pop() {
+            groups.push(g.clone());
+            all.push(g);
+        }
+    }
+    groups.extend(others);
+    if groups == s.presets.swatches {
+        return false;
+    }
+    s.presets.swatches = groups;
+    s.presets_changed();
+    true
+}
+
 fn total(groups: &[Group<Swatch>]) -> usize {
     groups.iter().map(|g| g.items.len()).sum()
 }

@@ -2,15 +2,9 @@
 
 | File | Content | Source / licence |
 |---|---|---|
-| `oracle-edit-demo.jpg` | Oracle Edit UI screenshot (rendered offscreen with `cargo run -p oracle-edit-ui-egui --example snapshot`) editing *The Great Wave off Kanagawa*, Katsushika Hokusai, c. 1831 | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tsunami_by_hokusai_19th_century.jpg). UI: this project. |
-| `oracle-edit-layer-styles.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *Earthrise*, William Anders, Apollo 8, 24 December 1968 (NASA photograph) | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:NASA-Apollo8-Dec24-Earthrise.jpg). UI: this project. |
-| `oracle-edit-masks.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *Girl with a Pearl Earring*, Johannes Vermeer, c. 1665 | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:1665_Girl_with_a_Pearl_Earring.jpg). UI: this project. |
-| `oracle-edit-vector.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *Water Lilies*, Claude Monet, 1906 | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Water_Lilies_-_1906,_Ryerson.jpg). UI: this project. |
-| `oracle-edit-filters.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *The Starry Night*, Vincent van Gogh, 1889 | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg). UI: this project. |
-| `oracle-edit-adjustments.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *Impression, Sunrise*, Claude Monet, 1872 | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Monet_-_Impression,_Sunrise.jpg). UI: this project. |
-| `oracle-edit-transform.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *The Tetons and the Snake River*, Ansel Adams, 1942 (U.S. National Archives) | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Adams_The_Tetons_and_the_Snake_River.jpg). UI: this project. |
-| `oracle-edit-type.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *Among the Sierra Nevada, California*, Albert Bierstadt, 1868 | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Albert_Bierstadt_-_Among_the_Sierra_Nevada,_California_-_Google_Art_Project.jpg). UI: this project. |
-| `oracle-edit-export-light.jpg` | Oracle Edit UI screenshot (offscreen snapshot) with *The Kiss*, Gustav Klimt, 1907–1908 | Artwork: public domain, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Gustav_Klimt_016.jpg). UI: this project. |
+| `oracle-edit-demo.jpg` | Oracle Edit with the *Neon Drive* poster open, captured from the app's own window (`tools/capture_window.ps1` in the Oracle suite) | Art: drawn in Oracle Vector (`oracle-vector/examples`), rendered by `oracle-vector-cli convert`. UI: this project. |
+| `oracle-edit-still-life.jpg` | Oracle Edit with the *Still Life* example open, captured from the app's own window (`tools/capture_window.ps1` in the Oracle suite) | Art: drawn in Oracle Vector (`oracle-vector/examples`), rendered by `oracle-vector-cli convert`. UI: this project. |
+| `oracle-edit-ribbons.jpg` | Oracle Edit with the *Live Blends* example open, captured from the app's own window (`tools/capture_window.ps1` in the Oracle suite) | Art: drawn in Oracle Vector (`oracle-vector/examples`), rendered by `oracle-vector-cli convert`. UI: this project. |
 
 Screenshots must use famous public-domain artwork (or content made in the app), never personal photos.
 

@@ -10,7 +10,7 @@ use crate::presets::{always, bad, req_str};
 use crate::{Result, Session};
 
 pub(crate) const MAX_DIMENSION: u32 = 300_000;
-// What `file.new` creates must reopen: the `.pcraft` loader's default canvas budget covers it (#2935).
+// What `file.new` creates must reopen: the `.oracle-edit` loader's default canvas budget covers it (#2935).
 const _: () =
     assert!(oracle_edit_format::MAX_CANVAS_SIDE >= MAX_DIMENSION && oracle_edit_format::MAX_CANVAS_PIXELS >= MAX_DIMENSION as u64 * MAX_DIMENSION as u64);
 pub(crate) const MAX_RESOLUTION: f64 = 30_000.0;
@@ -581,7 +581,7 @@ mod tests {
         }
     }
 
-    /// What `file.new` can create, `.pcraft` can reopen: the loader's default canvas budget
+    /// What `file.new` can create, `.oracle-edit` can reopen: the loader's default canvas budget
     /// covers the largest new document (#2935), and such a document round-trips.
     #[test]
     fn the_largest_new_document_reopens_from_pcraft() {

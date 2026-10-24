@@ -2261,7 +2261,7 @@ mod tests {
         assert_eq!(s.active().unwrap().history.can_undo(), undo_before, "a refused guide records no history step");
     }
 
-    /// Guides keep their exact place (#2918): 1 cm at 300 ppi through New Guide and .pcraft, and
+    /// Guides keep their exact place (#2918): 1 cm at 300 ppi through New Guide and .oracle-edit, and
     /// a 1/32 px PSD position past 2^19 px, where f32 has no 1/32 steps left.
     #[test]
     fn guides_keep_sub_pixel_positions_through_pcraft_and_psd() {

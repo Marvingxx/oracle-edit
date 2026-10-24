@@ -105,7 +105,7 @@ The window itself draws with the same device (or, with the CPU canvas, one it wa
 
 The desktop app writes its `log` records to standard error and to `logs/oracle-edit.log` in the settings directory (Linux `~/.config/oracle-edit/logs/`, macOS `~/Library/Application Support/OracleEdit/logs/`, Windows `%APPDATA%\OracleEdit\logs\`, or under `ORACLE_EDIT_CONFIG_DIR` / the portable data folder). A start launched from a desktop menu or the Dock has no terminal, so this file is what to attach to a bug report: GPU startup fallbacks, a lost device and the crash guard's panic report all land there. Each launch moves the previous log to `oracle-edit.1.log` (and that one to `oracle-edit.2.log`), so the log of a run that crashed survives the next start. A launch while another Oracle Edit is still running leaves that instance's log where it is and writes its own `oracle-edit-<pid>.log` next to it (the newest two of those are kept once their instances have exited; the `Oracle Edit <version>, log file <path>` line at startup names the file in use). The file stops growing at 16 MiB. `--version` and command-line errors write no file.
 
-By default Oracle Edit's own crates log at `info` and everything else at `warn`. `RUST_LOG` replaces that with env_logger-style directives, for example `RUST_LOG=debug`, `RUST_LOG=warn,oracle_edit_gpu=trace` or `RUST_LOG=info,wgpu_core=warn`; a directive ending in `*` covers every target starting with it (`oracle-edit*=debug`). The logger is `apps/oracle-edit/src/logging.rs`; the web build logs to the browser console instead.
+By default Oracle Edit's own crates log at `info` and everything else at `warn`. `RUST_LOG` replaces that with env_logger-style directives, for example `RUST_LOG=debug`, `RUST_LOG=warn,oracle_edit_gpu=trace` or `RUST_LOG=info,wgpu_core=warn`; a directive ending in `*` covers every target starting with it (`oracle_edit*=debug`). The logger is `apps/oracle-edit/src/logging.rs`; the web build logs to the browser console instead.
 
 ## Environment variables
 
@@ -185,8 +185,8 @@ See `docs/control-protocol.md` for every method. Tips:
 `apps/oracle-edit-cli` builds the binary `oracle-edit-cli`:
 
 ```sh
-cargo run -p oracle-edit-cli -- convert in.psd out.pcraft               # any supported format -> any
-cargo run -p oracle-edit-cli -- info out.pcraft                          # JSON: size, mode, depth, layer tree
+cargo run -p oracle-edit-cli -- convert in.psd out.oracle-edit               # any supported format -> any
+cargo run -p oracle-edit-cli -- info out.oracle-edit                          # JSON: size, mode, depth, layer tree
 cargo run -p oracle-edit-cli -- run in.png --cmd layer.new.layer --params '{"name":"Ink"}' \
                                           --cmd filter.blur.gaussianBlur --params '{"radius":3}' --out out.psd
 cargo run -p oracle-edit-cli -- run --new '{"width":800,"height":600}' --cmd document.inspect
@@ -196,7 +196,7 @@ cargo run -p oracle-edit-cli -- commands --filter blur                    # the 
 
 `actions.json` holds the steps of a recorded action: `[["<id>", {…}], …]`, `[{"command": "<id>", "params": {…}}, …]` or bare ids, as a list or wrapped in `{"actions": …}` or `{"steps": …}`; a droplet file works too. It can also be an Actions set (the Actions panel's `actions.json`, `{"actions": [{"name": …, "steps": […]}, …]}`): `--action <name>` picks the action to play (optional when the set holds one), and the whole set is loaded for each file, so a step that plays another action of the set works. `batch` refuses an `--out` folder that is the `--in` folder, since the results would replace the originals, unless `--in-place` is given. `run` prints one JSON line per command result.
 
-## Native format (.pcraft)
+## Native format (.oracle-edit)
 
 `crates/format` defines the lossless native bundle. It is either a ZIP of STORE entries or a directory with the same layout:
 
@@ -208,7 +208,7 @@ Keep one `PcraftWriter` per open document: re-saving then only compresses and wr
 
 At startup the desktop lists recovery metadata, then decodes one document at a time through the existing background-job system. The window stays usable, with recovery progress and Cancel in the status bar. Cancel skips the rest of that launch's recovery queue and prevents the current result from opening; the decoder may finish in the background. Failed or cancelled loads leave their recovery files intact for a later launch. Turning off Preferences › File Handling › Recover on launch skips discovery altogether.
 
-`oracle-edit-io` routes `.pcraft` through this crate in `import`/`export`, detecting it by magic or by extension.
+`oracle-edit-io` routes `.oracle-edit` through this crate in `import`/`export`, detecting it by magic or by extension.
 
 ## MCP (agents)
 
@@ -272,7 +272,7 @@ A typical agent loop (place inputs under the configured read root and outputs un
 2. `command_list {filter:"blur"}`
 3. `command_run {id:"filter.blur.gaussianBlur", params:{radius:4}}`
 4. `doc_render_preview` to check the result
-5. `doc_save {path:"out.pcraft"}`
+5. `doc_save {path:"out.oracle-edit"}`
 
 ## Colour management
 

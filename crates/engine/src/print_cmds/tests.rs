@@ -377,8 +377,8 @@ fn package_copies_links_and_relinks() {
     for p in [r["folder"].as_str().unwrap(), docp, r["links"][0].as_str().unwrap()] {
         assert!(!p.contains('\\'), "{p}");
     }
-    assert!(docp.ends_with("Print Me/Print Me.pcraft"));
-    let back = oracle_edit_io::import("Print Me.pcraft", &std::fs::read(docp).unwrap()).unwrap().document;
+    assert!(docp.ends_with("Print Me/Print Me.oracle-edit"));
+    let back = oracle_edit_io::import("Print Me.oracle-edit", &std::fs::read(docp).unwrap()).unwrap().document;
     let linked: Vec<String> = back
         .walk()
         .iter()

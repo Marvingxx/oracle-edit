@@ -4,7 +4,7 @@ Oracle Edit opens GIMP's native `.xcf` files (and `.xcf.gz`) with their layers, 
 Open, recent files, drops, the CLI (`convert`, `info`, `batch`) and automation (`doc.open`, MCP)
 use the same reader in `oracle-edit-io` (`crates/io/src/xcf.rs`). A file is recognised by its
 `gimp xcf ` signature, so an XCF with another extension still opens as one. Save suggests
-`.pcraft`, which keeps everything Oracle Edit holds; exporting as `.xcf` fails with a message.
+`.oracle-edit`, which keeps everything Oracle Edit holds; exporting as `.xcf` fails with a message.
 
 ## What is kept
 

@@ -1,5 +1,5 @@
 //! Layer comps (resource 1065 + per-layer `cmls`) and artboards (`artb`) through PSD and
-//! `.pcraft`: byte-exact while unchanged, regenerated after edits.
+//! `.oracle-edit`: byte-exact while unchanged, regenerated after edits.
 
 #[cfg(feature = "corpus")]
 use std::path::PathBuf;
@@ -237,15 +237,15 @@ fn synthetic_pcraft_roundtrip_keeps_everything() {
         reordered.add(&entry.name, &zip.read(entry, bytes.len()).unwrap()).unwrap();
     }
     let reordered = reordered.finish().unwrap();
-    for name in ["x.PCRAFT", "no-extension"] {
+    for name in ["x.ORACLE-EDIT", "no-extension"] {
         let imported = import(name, &reordered).unwrap().document;
         assert_eq!(imported.layer_comps, d.layer_comps);
         assert_eq!(imported.layers[1].artboard(), d.layers[1].artboard());
     }
 
     let png = export(&d, "x.png", &ExportOptions::default()).unwrap().bytes;
-    assert!(import("pcraft", &png).is_ok());
-    assert!(matches!(import("broken.pcraft", b"not a native bundle"), Err(oracle_edit_io::IoError::Pcraft(_))));
+    assert!(import("oracle-edit", &png).is_ok());
+    assert!(matches!(import("broken.oracle-edit", b"not a native bundle"), Err(oracle_edit_io::IoError::Pcraft(_))));
 }
 
 /// A layer at (4, 4) whose preserved `shmd` block offsets it by `(dx, 0)` in comp 1, plus the

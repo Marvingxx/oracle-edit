@@ -744,7 +744,7 @@ fn flatten_all_layer_effects_and_masks() {
 /// Flatten All Layer Effects must bake the effect visuals without destroying the layer's masks:
 /// an enabled raster mask and a vector mask on one layer, a disabled raster mask on another
 /// (#3804). The command is a visual no-op; the masks (pixels and state) survive, including a
-/// `.pcraft` round trip.
+/// `.oracle-edit` round trip.
 #[test]
 fn flatten_all_layer_effects_keeps_masks() {
     for depth in [8, 16, 32] {
@@ -838,16 +838,16 @@ fn flatten_all_layer_effects_keeps_masks() {
         assert_eq!(doc(&s).layer(id1).unwrap().mask, m1);
         assert_eq!(doc(&s).layer(id1).unwrap().vector_mask, v1);
         assert_eq!(doc(&s).layer(id2).unwrap().mask, m2);
-        // The masks survive a `.pcraft` save and reopen.
+        // The masks survive a `.oracle-edit` save and reopen.
         let dir = tmp("flatten-effects-masks");
-        let path = join(&dir, "masks.pcraft");
+        let path = join(&dir, "masks.oracle-edit");
         save_doc(doc(&s), &path, None).unwrap();
         let bytes = std::fs::read(&path).unwrap();
         let mut s2 = Session::new();
-        open_bytes_as(&mut s2, "masks.pcraft", &bytes, None, None).unwrap();
+        open_bytes_as(&mut s2, "masks.oracle-edit", &bytes, None, None).unwrap();
         let layers: Vec<_> = doc(&s2).walk().into_iter().map(|(_, _, l)| l).collect();
-        assert!(layers.iter().any(|l| l.mask == m1 && l.vector_mask == v1), "the raster and vector masks survive .pcraft");
-        assert!(layers.iter().any(|l| l.mask == m2), "the disabled mask survives .pcraft");
+        assert!(layers.iter().any(|l| l.mask == m1 && l.vector_mask == v1), "the raster and vector masks survive .oracle-edit");
+        assert!(layers.iter().any(|l| l.mask == m2), "the disabled mask survives .oracle-edit");
     }
 }
 
@@ -1109,7 +1109,7 @@ fn guide_layouts() {
 
 #[test]
 fn only_layered_files_save_in_place() {
-    for path in ["a.psd", "dir/a.PSB", r"C:\w\a.pcraft", "my.dir/a.psd", "a.ora", "dir/A.ORA"] {
+    for path in ["a.psd", "dir/a.PSB", r"C:\w\a.oracle-edit", "my.dir/a.psd", "a.ora", "dir/A.ORA"] {
         assert!(saves_in_place(path), "{path}");
     }
     // Flat formats, no extension, a dotted folder with an extensionless file, a dot file.
@@ -1126,7 +1126,7 @@ fn openraster_holds_a_document_only_when_it_drops_nothing() {
     let mut s = session(16, 16, 8);
     s.execute("layer.new.layer", json!({})).unwrap();
     let plain = doc(&s).clone();
-    for p in ["a.psd", "a.psb", "a.pcraft", "a.ora", "A.ORA"] {
+    for p in ["a.psd", "a.psb", "a.oracle-edit", "a.ora", "A.ORA"] {
         assert!(holds_at(&plain, p), "{p}");
     }
     for p in ["a.png", "a.tif", "a", ""] {

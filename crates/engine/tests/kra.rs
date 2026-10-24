@@ -48,6 +48,6 @@ fn krita_documents_open_read_only_and_stay_editable() {
     assert!(oracle_edit_io::export(doc, "x.kra", &Default::default()).is_err());
     let ora = oracle_edit_io::export(doc, "x.ora", &Default::default()).unwrap();
     assert_eq!(oracle_edit_io::import("x.ora", &ora.bytes).unwrap().document.layers.len(), doc.layers.len());
-    let native = oracle_edit_io::export(doc, "x.pcraft", &Default::default()).unwrap();
-    assert_eq!(oracle_edit_io::import("x.pcraft", &native.bytes).unwrap().document.layers, doc.layers);
+    let native = oracle_edit_io::export(doc, "x.oracle-edit", &Default::default()).unwrap();
+    assert_eq!(oracle_edit_io::import("x.oracle-edit", &native.bytes).unwrap().document.layers, doc.layers);
 }

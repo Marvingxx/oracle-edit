@@ -598,7 +598,7 @@ fn apply_link_groups(nodes: &[LayerNode], layers: &mut [Layer], ids: &[u16]) {
 }
 
 /// Rejects a file whose groups nest deeper than the document model's cap, with the actionable
-/// limit error. Nesting past the cap could never be saved (.pcraft refuses it).
+/// limit error. Nesting past the cap could never be saved (.oracle-edit refuses it).
 pub(crate) fn check_group_depth(file: &PsdFile) -> Result<(), crate::IoError> {
     if group_depth(file) > oracle_edit_doc::MAX_GROUP_DEPTH {
         return Err(crate::IoError::Unsupported(format!("layer groups nested deeper than {}", oracle_edit_doc::MAX_GROUP_DEPTH)));

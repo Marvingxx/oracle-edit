@@ -150,7 +150,7 @@ fn conversion_is_pixel_identical_at_every_depth() {
         assert!((l.opacity - 0.6).abs() < 1e-6, "opacity stays on the smart layer");
         let sm = active_smart(&s);
         let SmartSource::Embedded { file_name, bytes } = &sm.source else { panic!() };
-        assert!(file_name.ends_with(".pcraft"));
+        assert!(file_name.ends_with(".oracle-edit"));
         // The nested document is cropped to the content, including the off-canvas part.
         let inner = decode_source(file_name, bytes).unwrap();
         assert_eq!((inner.size.width, inner.size.height), (46, 33));
@@ -630,7 +630,7 @@ fn export_replace_and_linked_contents() {
     let mut s = session(8);
     paint(&mut s);
     convert(&mut s);
-    let out = dir.join("contents.pcraft");
+    let out = dir.join("contents.oracle-edit");
     let r = s.execute("layer.smartObjects.exportContents", json!({"path": out.to_str().unwrap()})).unwrap();
     assert!(oracle_edit_format::is_pcraft(&std::fs::read(&out).unwrap()));
     assert_eq!(r["converted"], false);
@@ -1005,7 +1005,7 @@ fn contents_file() -> std::path::PathBuf {
         oracle_edit_doc::SampleType::U8,
         oracle_edit_color::Color::rgb(1.0, 0.0, 0.0),
     );
-    let path = std::env::temp_dir().join(format!("pcraft-contents-{}-{}.pcraft", std::process::id(), doc.id.0));
+    let path = std::env::temp_dir().join(format!("pcraft-contents-{}-{}.oracle-edit", std::process::id(), doc.id.0));
     std::fs::write(&path, encode_source(&doc).unwrap()).unwrap();
     path
 }
@@ -1073,7 +1073,7 @@ fn automation_smart_contents_checks_nested_reads_at_nontrivial_placements() {
         let mut inner = Document::new("inner", Size::new(4, 4), oracle_edit_doc::ColorMode::Rgb, oracle_edit_doc::SampleType::U8);
         let source_path = if psd_uuid {
             let linked =
-                oracle_edit_io::linked::LinkedFile { uuid: "nested-id".into(), file_name: "source.pcraft".into(), bytes: std::fs::read(&path).unwrap() };
+                oracle_edit_io::linked::LinkedFile { uuid: "nested-id".into(), file_name: "source.oracle-edit".into(), bytes: std::fs::read(&path).unwrap() };
             inner.metadata.psd_global_blocks.push((*b"8BIM", *b"lnk2", Arc::new(oracle_edit_io::linked::encode_linked_file(&linked))));
             linked.uuid
         } else {
@@ -1088,7 +1088,7 @@ fn automation_smart_contents_checks_nested_reads_at_nontrivial_placements() {
         parent.layers.push(Layer::new(
             "outer",
             LayerContent::Smart(SmartObject::new(
-                SmartSource::Embedded { file_name: "inner.pcraft".into(), bytes: Arc::new(encode_source(&inner).unwrap()) },
+                SmartSource::Embedded { file_name: "inner.oracle-edit".into(), bytes: Arc::new(encode_source(&inner).unwrap()) },
                 Affine { m: [scale, 0.0, 0.0, scale, 0.0, 0.0] },
                 Some(cache),
             )),

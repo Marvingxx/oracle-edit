@@ -109,7 +109,7 @@ mod tests {
     fn other_apps_documents_are_recognised_but_not_edits_own() {
         assert!(is_foreign("C:/logos/Logo.ORACLE-VECTOR"));
         assert!(is_foreign("charte.oracle-guide"));
-        assert!(!is_foreign("photo.pcraft"));
+        assert!(!is_foreign("photo.oracle-edit"));
         assert!(!is_foreign("logo.svg"));
         assert!(drawn("logo.svg").is_none());
     }

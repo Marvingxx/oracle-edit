@@ -26,8 +26,8 @@ fn real_pdn_layers_and_native_saves() {
     for path in &paths {
         let doc = oracle_edit_io::import(&path.to_string_lossy(), &std::fs::read(path).unwrap()).unwrap_or_else(|e| panic!("{}: {e}", path.display())).document;
         let flat = oracle_edit_compose::flatten(&doc);
-        let native = oracle_edit_io::export(&doc, "copy.pcraft", &Default::default()).unwrap();
-        let back = oracle_edit_io::import("copy.pcraft", &native.bytes).unwrap().document;
+        let native = oracle_edit_io::export(&doc, "copy.oracle-edit", &Default::default()).unwrap();
+        let back = oracle_edit_io::import("copy.oracle-edit", &native.bytes).unwrap().document;
         assert_eq!(doc.layers, back.layers, "{}", path.display());
         assert_eq!(flat.px, oracle_edit_compose::flatten(&back).px);
         let png = path.with_extension("png");

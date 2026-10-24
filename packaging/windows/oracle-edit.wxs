@@ -10,7 +10,7 @@
   Per-machine install with a setup wizard that names the version: Welcome, install folder
   (Program Files\Oracle Edit by default, remembered for upgrades), Ready, a progress page, and a
   Finish page with a ticked "Launch Oracle Edit" box. Installs a Start Menu shortcut, makes
-  Oracle Edit the owner of `.pcraft`, and offers it under "Open with" for PSD/PSB and the image
+  Oracle Edit the owner of `.oracle-edit`, and offers it under "Open with" for PSD/PSB and the image
   formats it reads (without taking over the user's default app for them), plus oracle-edit-cli.
   `msiexec /qn` still installs silently.
 -->
@@ -88,8 +88,12 @@
               Icon="OracleEditIcon.exe" IconIndex="0" />
         </File>
 
-        <!-- .pcraft: Oracle Edit's own format; Oracle Edit is its default app. -->
+        <!-- .oracle-edit: Oracle Edit's own format; Oracle Edit is its default app. -->
         <ProgId Id="OracleEdit.Document" Description="Oracle Edit Document" Icon="OracleEditExe" IconIndex="0">
+          <Extension Id="oracle-edit" ContentType="application/x-oracle-edit">
+            <Verb Id="open" Command="Open" TargetFile="OracleEditExe" Argument="&quot;%1&quot;" />
+          </Extension>
+          <!-- .pcraft: the same format under its name from before the Oracle rename. -->
           <Extension Id="pcraft" ContentType="application/x-oracle-edit">
             <Verb Id="open" Command="Open" TargetFile="OracleEditExe" Argument="&quot;%1&quot;" />
           </Extension>
@@ -123,6 +127,7 @@
         <!-- "Open with" app list and the Run dialog (Win+R "oracle-edit"). -->
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\oracle-edit.exe" Name="FriendlyAppName" Value="Oracle Edit" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\oracle-edit.exe\shell\open\command" Value="&quot;[#OracleEditExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\oracle-edit.exe\SupportedTypes" Name=".oracle-edit" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\oracle-edit.exe\SupportedTypes" Name=".pcraft" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\oracle-edit.exe\SupportedTypes" Name=".psd" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\oracle-edit.exe\SupportedTypes" Name=".psb" Value="" Type="string" />

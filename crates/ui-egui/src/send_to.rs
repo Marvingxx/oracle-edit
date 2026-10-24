@@ -20,7 +20,7 @@ const EVERY: f64 = 1.0;
 /// and unchanged since, else a copy stored in the library ("Mes créations").
 fn document_file(app: &mut OracleEditApp) -> Result<PathBuf, String> {
     let st = app.session.active().ok_or("no document is open")?;
-    if let Some(path) = st.path.as_deref().filter(|p| p.to_ascii_lowercase().ends_with(".pcraft") && st.revision == st.saved_revision) {
+    if let Some(path) = st.path.as_deref().filter(|p| p.to_ascii_lowercase().ends_with(".oracle-edit") && st.revision == st.saved_revision) {
         return Ok(PathBuf::from(path));
     }
     crate::library_send::store_active(app)

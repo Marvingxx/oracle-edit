@@ -1,6 +1,6 @@
 //! # oracle-edit-format
 //!
-//! The native, lossless `.pcraft` document bundle (architecture §9).
+//! The native, lossless `.oracle-edit` document bundle (architecture §9).
 //!
 //! ```text
 //! manifest.json            versioned document tree (see [`manifest`])
@@ -47,19 +47,26 @@ pub use read::read_file;
 pub use store::{ByteSource, DEFAULT_REVERIFY_BUDGET, PcraftWriter, SaveStats, read_entry};
 
 /// File extension of the native format.
-pub const EXTENSION: &str = "pcraft";
+pub const EXTENSION: &str = "oracle-edit";
+/// The native format's extension from before the Oracle rename (PhotoCraft): such files still open.
+pub const FORMER_EXTENSION: &str = "pcraft";
+
+/// Is `ext` (without the dot, any case) a native document extension, today's or the former one?
+pub fn is_native_ext(ext: &str) -> bool {
+    ext.eq_ignore_ascii_case(EXTENSION) || ext.eq_ignore_ascii_case(FORMER_EXTENSION)
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum FormatError {
-    #[error("corrupt .pcraft bundle: {0}")]
+    #[error("corrupt .oracle-edit bundle: {0}")]
     Corrupt(String),
-    #[error("unsupported .pcraft feature: {0}")]
+    #[error("unsupported .oracle-edit feature: {0}")]
     Unsupported(String),
     #[error("bundle written by a newer version (format {found}, this build reads up to {supported})")]
     TooNew { found: u32, supported: u32 },
     #[error("limit exceeded: {0}")]
     LimitExceeded(String),
-    #[error("`{path}` is NaN or infinite, which a .pcraft manifest cannot hold; reset that value and save again")]
+    #[error("`{path}` is NaN or infinite, which a .oracle-edit manifest cannot hold; reset that value and save again")]
     NonFinite { path: String },
     #[error("I/O: {0}")]
     Io(#[from] std::io::Error),

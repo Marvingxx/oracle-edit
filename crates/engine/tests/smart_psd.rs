@@ -92,7 +92,7 @@ fn smart_objects_and_filters_survive_psd() {
         let doc = s.active().unwrap().doc.clone();
         let (_, before) = smart(&doc);
         let SmartSource::Embedded { bytes: pcraft, .. } = &before.source else { panic!("embedded") };
-        let nested = decode_source("x.pcraft", pcraft).unwrap();
+        let nested = decode_source("x.oracle-edit", pcraft).unwrap();
 
         let out = oracle_edit_io::export(&doc, "psd", &Default::default()).unwrap();
         assert!(!out.warnings.iter().any(|w| w.contains("pixels")), "{:?}", out.warnings);
@@ -406,7 +406,7 @@ fn edited_psd_smart_objects_drop_their_old_file() {
 
 /// A Displace smart filter from a Photoshop mockup PSD carries its displacement map embedded
 /// (`DspD`, stretched over the canvas): it re-renders displaced instead of passing the pixels
-/// through, and keeps that map through PSD export, `.pcraft` and a PSD re-import.
+/// through, and keeps that map through PSD export, `.oracle-edit` and a PSD re-import.
 #[test]
 fn displace_psd_filter_renders_with_its_embedded_map() {
     use oracle_edit_psd::descriptor::{Descriptor, Id, UnicodeString, Value};
@@ -472,7 +472,7 @@ fn displace_psd_filter_renders_with_its_embedded_map() {
 /// A Perspective Warp smart filter as Photoshop writes it (`perspectiveWarpTransform`: vertices,
 /// warped vertices and quads of vertex indices, document pixels) opens as
 /// `layer.smartObjects.perspectiveWarp` and re-renders warped instead of flat (#6268), and keeps
-/// its planes through PSD export, `.pcraft` and a PSD re-import.
+/// its planes through PSD export, `.oracle-edit` and a PSD re-import.
 #[test]
 fn perspective_warp_psd_filter_renders_warped() {
     use oracle_edit_psd::descriptor::{Descriptor, UnicodeString, Value};
@@ -580,7 +580,7 @@ fn cs2_plld_only_smart_object_opens_its_contents() {
     let doc = s.active().unwrap().doc.clone();
     let (_, before) = smart(&doc);
     let SmartSource::Embedded { bytes: pcraft, .. } = &before.source else { panic!("embedded") };
-    let nested = decode_source("x.pcraft", pcraft).unwrap();
+    let nested = decode_source("x.oracle-edit", pcraft).unwrap();
 
     let back = oracle_edit_io::import("cs2.psd", &cs2_layout(&doc)).unwrap().document;
     let (bid, after) = smart(&back);

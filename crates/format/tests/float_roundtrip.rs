@@ -1,4 +1,4 @@
-//! `.pcraft` is lossless for f64: every coordinate reloads bit-for-bit.
+//! `.oracle-edit` is lossless for f64: every coordinate reloads bit-for-bit.
 
 use oracle_edit_color::{ColorMode, SampleType};
 use oracle_edit_doc::{Document, Layer, LayerContent, Size};

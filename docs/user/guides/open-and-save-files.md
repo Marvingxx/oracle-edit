@@ -20,7 +20,7 @@ Oracle Edit opens PSD and PSB (including 16-bit, 32-bit, CMYK and Lab files), la
 ## Save with layers
 
 1. Choose **File › Save As…**.
-2. Pick **PSD Document** (`.psd` or `.psb`) to share the file with Photoshop, or **Oracle Edit** (`.pcraft`) for Oracle Edit's own format.
+2. Pick **PSD Document** (`.psd` or `.psb`) to share the file with Photoshop, or **Oracle Edit** (`.oracle-edit`) for Oracle Edit's own format.
 3. Name the file and save.
 
 After that, **File › Save** saves into the same file. **File › Save a Copy…** saves a copy under a new name. While a large file saves, the status bar and the tab title show "Saving" with a percentage.

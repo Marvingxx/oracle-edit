@@ -54,7 +54,7 @@ impl AuthorizedWorkspace {
         read_to_observed_length(&mut file, metadata.len())
     }
 
-    /// Load one `.pcraft` document in directory form — the native on-disk layout — below the
+    /// Load one `.oracle-edit` document in directory form — the native on-disk layout — below the
     /// read root. `read` serves regular files only (the zip form), so a regular file at the
     /// path is reported as `Ok(None)` for the caller to fall back to.
     pub fn open_pcraft(&self, path: &str) -> Result<Option<oracle_edit_doc::Document>, AutomationError> {
@@ -232,7 +232,7 @@ fn path_error(path: &str, reason: &str) -> AutomationError {
     AutomationError::BadRequest(format!("automation path rejected: {reason}: `{path}`"))
 }
 
-/// A `.pcraft` directory behind the read-root capability: bounded reads, no ambient paths.
+/// A `.oracle-edit` directory behind the read-root capability: bounded reads, no ambient paths.
 struct DirHandle {
     dir: Dir,
 }
@@ -544,8 +544,8 @@ mod tests {
     fn open_pcraft_loads_a_directory_below_the_read_root() {
         let (inside, _, workspace) = roots("pcraft-dir");
         let doc = oracle_edit_doc::Document::new("Native", oracle_edit_doc::Size::new(16, 12), oracle_edit_doc::ColorMode::Rgb, oracle_edit_doc::SampleType::U8);
-        oracle_edit_format::PcraftWriter::new().save_dir(&doc, &inside.join("native.pcraft"), &oracle_edit_format::SaveOptions::default()).unwrap();
-        let loaded = workspace.open_pcraft("native.pcraft").unwrap().expect("the directory form loads");
+        oracle_edit_format::PcraftWriter::new().save_dir(&doc, &inside.join("native.oracle-edit"), &oracle_edit_format::SaveOptions::default()).unwrap();
+        let loaded = workspace.open_pcraft("native.oracle-edit").unwrap().expect("the directory form loads");
         assert_eq!(loaded.name, doc.name);
         assert_eq!((loaded.size.width, loaded.size.height), (16, 12));
     }
@@ -554,29 +554,29 @@ mod tests {
     fn open_pcraft_reports_zip_files_and_missing_paths_clearly() {
         let (inside, _, workspace) = roots("pcraft-errors");
         let doc = oracle_edit_doc::Document::new("Zipped", oracle_edit_doc::Size::new(4, 4), oracle_edit_doc::ColorMode::Rgb, oracle_edit_doc::SampleType::U8);
-        let zip = inside.join("zipped.pcraft");
+        let zip = inside.join("zipped.oracle-edit");
         oracle_edit_format::PcraftWriter::new().save_path(&doc, &zip, &oracle_edit_format::SaveOptions::default()).unwrap();
         assert!(zip.is_file());
-        assert!(workspace.open_pcraft("zipped.pcraft").unwrap().is_none(), "the zip form falls back to the bytes path");
-        let error = workspace.open_pcraft("missing.pcraft").unwrap_err().to_string();
+        assert!(workspace.open_pcraft("zipped.oracle-edit").unwrap().is_none(), "the zip form falls back to the bytes path");
+        let error = workspace.open_pcraft("missing.oracle-edit").unwrap_err().to_string();
         assert!(error.contains("failed"), "a missing path propagates its io error: {error}");
-        assert!(AuthorizedWorkspace::default().open_pcraft("x.pcraft").is_err(), "no read authority fails closed");
+        assert!(AuthorizedWorkspace::default().open_pcraft("x.oracle-edit").is_err(), "no read authority fails closed");
     }
 
     #[cfg(unix)]
     #[test]
     fn open_pcraft_rejects_non_regular_entries_and_escaping_symlinks() {
         let (inside, _, workspace) = roots("pcraft-nonregular");
-        let bundle = inside.join("native.pcraft");
+        let bundle = inside.join("native.oracle-edit");
         std::fs::create_dir_all(bundle.join("manifest.json")).unwrap();
-        let error = workspace.open_pcraft("native.pcraft").unwrap_err().to_string();
+        let error = workspace.open_pcraft("native.oracle-edit").unwrap_err().to_string();
         assert!(error.contains("not a regular file"), "a directory entry is refused, not streamed: {error}");
 
         let (inside2, _, workspace2) = roots("pcraft-symlink");
-        let bundle2 = inside2.join("native.pcraft");
+        let bundle2 = inside2.join("native.oracle-edit");
         std::fs::create_dir(&bundle2).unwrap();
         std::os::unix::fs::symlink("/dev/zero", bundle2.join("manifest.json")).unwrap();
-        assert!(workspace2.open_pcraft("native.pcraft").is_err(), "an escaping symlink entry is refused");
+        assert!(workspace2.open_pcraft("native.oracle-edit").is_err(), "an escaping symlink entry is refused");
     }
 
     fn temp_files(dir: &Path) -> Vec<String> {

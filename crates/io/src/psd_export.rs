@@ -515,7 +515,7 @@ impl Ex {
             for mode in modes.into_iter().flatten() {
                 if !mode.has_psd_equivalent() {
                     self.warnings.push(format!(
-                        "layer \"{}\", {}: {} has no PSD equivalent and was written as Normal; save as .pcraft to preserve it",
+                        "layer \"{}\", {}: {} has no PSD equivalent and was written as Normal; save as .oracle-edit to preserve it",
                         l.name,
                         effect.label(),
                         mode.label()
@@ -542,7 +542,7 @@ impl Ex {
         }
         if !l.blend.has_psd_equivalent() {
             self.warnings.push(format!(
-                "layer \"{}\": {} has no PSD equivalent and was written as Normal; save as .pcraft to preserve it",
+                "layer \"{}\": {} has no PSD equivalent and was written as Normal; save as .oracle-edit to preserve it",
                 l.name,
                 l.blend.label()
             ));
@@ -918,7 +918,7 @@ impl Ex {
     }
 
     /// The `lnk2` file a smart object's source is written as: a preserved embedded file, or a new
-    /// one (a `.pcraft` source becomes a PSB of the nested document; image files are embedded as
+    /// one (a `.oracle-edit` source becomes a PSB of the nested document; image files are embedded as
     /// they are; a linked file is read and embedded).
     fn smart_source(&mut self, sm: &oracle_edit_doc::SmartObject, template: Option<&crate::smart_map::Placed>) -> Result<Source, String> {
         use oracle_edit_doc::SmartSource;
@@ -1014,7 +1014,7 @@ impl Ex {
         c
     }
 
-    /// Adds `bytes` as an embedded file (converted to PSB when it is a `.pcraft` bundle), once
+    /// Adds `bytes` as an embedded file (converted to PSB when it is a `.oracle-edit` bundle), once
     /// per contents identity and bytes. Equal bytes in independent objects stay independent.
     fn embed(&mut self, contents_id: SmartContentsId, file_name: &str, bytes: &[u8]) -> Result<Source, String> {
         let key = (contents_id, *blake3::hash(bytes).as_bytes());

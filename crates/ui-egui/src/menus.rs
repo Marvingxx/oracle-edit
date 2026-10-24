@@ -2182,7 +2182,7 @@ mod open_recent_tests {
             ..Default::default()
         };
         let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), services);
-        let path = std::env::temp_dir().join("oracle_edit_recent_test.pcraft");
+        let path = std::env::temp_dir().join("oracle_edit_recent_test.oracle-edit");
         std::fs::write(&path, b"x").unwrap();
         let p = path.to_string_lossy().to_string();
         let ctx = egui::Context::default();

@@ -37,7 +37,7 @@ fn imported_layers_remain_editable_with_history_and_native_persistence() {
     session.execute("layer.delete", json!({"layer":copy})).unwrap();
     assert!(session.undo());
     let doc = &session.active().unwrap().doc;
-    let native = oracle_edit_io::export(doc, "edited.pcraft", &Default::default()).unwrap();
-    let reopened = oracle_edit_io::import("edited.pcraft", &native.bytes).unwrap().document;
+    let native = oracle_edit_io::export(doc, "edited.oracle-edit", &Default::default()).unwrap();
+    let reopened = oracle_edit_io::import("edited.oracle-edit", &native.bytes).unwrap().document;
     assert_eq!(doc.layers, reopened.layers);
 }

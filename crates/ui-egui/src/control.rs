@@ -1267,10 +1267,10 @@ fn dispatch(app: &mut OracleEditApp, ctx: &egui::Context, req: &ControlRequest) 
         }
         "app.open" => match s("path") {
             Some(path) => {
-                // Directory .pcraft (the native on-disk form) loads through a capability-scoped
+                // Directory .oracle-edit (the native on-disk form) loads through a capability-scoped
                 // source; the single-file (zip) form falls back to the bytes path, as do all
                 // other formats.
-                if path.rsplit_once('.').is_some_and(|(_, ext)| ext.eq_ignore_ascii_case(oracle_edit_format::EXTENSION))
+                if path.rsplit_once('.').is_some_and(|(_, ext)| oracle_edit_format::is_native_ext(ext))
                     && let Some(open) = app.services.automation_open_pcraft.as_mut()
                 {
                     match open(path) {
@@ -2615,11 +2615,11 @@ mod tests {
         use serde_json::json;
         let services = crate::Services {
             automation_open_pcraft: Some(Box::new(|path: &str| {
-                if path == "native.pcraft" {
+                if path == "native.oracle-edit" {
                     let name = path.rsplit('/').next().unwrap_or(path).to_string();
                     let doc = Document::new("Native", oracle_edit_doc::Size::new(16, 12), oracle_edit_doc::ColorMode::Rgb, oracle_edit_doc::SampleType::U8);
                     Ok(Some((name, doc)))
-                } else if path == "zipped.pcraft" {
+                } else if path == "zipped.oracle-edit" {
                     Ok(None) // a regular file: the bytes path reads the zip form
                 } else {
                     Err(format!("corrupt bundle: {path}"))
@@ -2629,7 +2629,7 @@ mod tests {
                 Ok((Document::new(name, oracle_edit_doc::Size::new(4, 4), oracle_edit_doc::ColorMode::Rgb, oracle_edit_doc::SampleType::U8), Vec::new()))
             })),
             automation_read: Some(Box::new(|path: &str| {
-                if path == "zipped.pcraft" {
+                if path == "zipped.oracle-edit" {
                     Ok((path.rsplit('/').next().unwrap_or(path).to_string(), b"zip-bytes".to_vec()))
                 } else {
                     Err(format!("no such path: {path}"))
@@ -2640,21 +2640,21 @@ mod tests {
         let mut app = OracleEditApp::new(oracle_edit_engine::Session::new(), services);
         let ctx = egui::Context::default();
 
-        let r = call(&mut app, &ctx, "app.open", json!({"path": "native.pcraft"}));
-        assert_eq!(r["result"], json!({"path": "native.pcraft", "name": "native.pcraft", "warnings": []}), "{r}");
+        let r = call(&mut app, &ctx, "app.open", json!({"path": "native.oracle-edit"}));
+        assert_eq!(r["result"], json!({"path": "native.oracle-edit", "name": "native.oracle-edit", "warnings": []}), "{r}");
         assert_eq!(app.session.active().unwrap().doc.name, "Native");
-        assert_eq!(app.ui.recent_files, vec!["native.pcraft".to_string()], "the open is recorded in recent files");
+        assert_eq!(app.ui.recent_files, vec!["native.oracle-edit".to_string()], "the open is recorded in recent files");
         assert_eq!(app.session.active().unwrap().path, None, "no save-back target: the automation writer replaces files, never directories");
         let r = call(&mut app, &ctx, "app.save", json!({}));
         assert!(r["error"].as_str().unwrap().contains("pass `path`"), "an in-place save is refused up front: {r}");
 
-        // The single-file form takes the bytes path through the same `.pcraft` extension.
-        let r = call(&mut app, &ctx, "app.open", json!({"path": "zipped.pcraft"}));
-        assert_eq!(r["result"]["name"], "zipped.pcraft", "{r}");
-        assert_eq!(app.session.active().unwrap().doc.name, "zipped.pcraft", "the import served the zip form");
+        // The single-file form takes the bytes path through the same `.oracle-edit` extension.
+        let r = call(&mut app, &ctx, "app.open", json!({"path": "zipped.oracle-edit"}));
+        assert_eq!(r["result"]["name"], "zipped.oracle-edit", "{r}");
+        assert_eq!(app.session.active().unwrap().doc.name, "zipped.oracle-edit", "the import served the zip form");
 
         // A real opener error propagates instead of being masked by the fallback.
-        let r = call(&mut app, &ctx, "app.open", json!({"path": "gone.pcraft"}));
+        let r = call(&mut app, &ctx, "app.open", json!({"path": "gone.oracle-edit"}));
         assert!(r["error"].as_str().unwrap().contains("corrupt bundle"), "{r}");
     }
 
@@ -2821,7 +2821,7 @@ mod tests {
         app.session
             .edit("Nested fixture", |doc, _| {
                 let LayerContent::Smart(sm) = &mut doc.layer_mut(smart).unwrap().content else { panic!("smart fixture") };
-                sm.source = SmartSource::Embedded { file_name: "product.pcraft".into(), bytes: Arc::new(nested) };
+                sm.source = SmartSource::Embedded { file_name: "product.oracle-edit".into(), bytes: Arc::new(nested) };
                 Ok(())
             })
             .unwrap();
@@ -2859,11 +2859,11 @@ mod tests {
             Ok(())
         }));
         app.services.write = Some(Box::new(|_, _| Err("ambient writer used".into())));
-        let r = call(&mut app, &ctx, "app.save", json!({"path": "out/template.pcraft"}));
+        let r = call(&mut app, &ctx, "app.save", json!({"path": "out/template.oracle-edit"}));
         assert_eq!(r["ok"], true, "{r}");
         let written = written.borrow();
         assert_eq!(written.len(), 1);
-        assert_eq!(written[0].0, "out/template.pcraft");
+        assert_eq!(written[0].0, "out/template.oracle-edit");
         let saved = oracle_edit_engine::smart_cmds::decode_source(&written[0].0, &written[0].1).unwrap();
         assert_eq!(oracle_edit_compose::flatten(&saved).px[0], [0.0, 0.0, 1.0, 1.0]);
     }
@@ -2874,7 +2874,7 @@ mod tests {
         use std::sync::Arc;
 
         let (mut app, ctx, smart) = smart_control_app();
-        let path = std::env::temp_dir().join(format!("pc-control-smart-linked-{}.pcraft", std::process::id()));
+        let path = std::env::temp_dir().join(format!("pc-control-smart-linked-{}.oracle-edit", std::process::id()));
         let st = app.session.active().unwrap();
         let LayerContent::Smart(sm) = &st.doc.layer(smart).unwrap().content else { panic!("smart fixture") };
         let SmartSource::Embedded { bytes, .. } = &sm.source else { panic!("embedded fixture") };

@@ -1,5 +1,5 @@
 //! Note tool annotations (Window › Notes, File › Import › Notes…). Notes are document data
-//! ([`oracle_edit_doc::Note`]), saved in `.pcraft` and as the PSD `Anno` block; each change is
+//! ([`oracle_edit_doc::Note`]), saved in `.oracle-edit` and as the PSD `Anno` block; each change is
 //! one history step.
 
 use oracle_edit_color::Color;
@@ -158,11 +158,11 @@ fn read(path: &str) -> Result<Vec<u8>> {
     Err(EngineError::Other(format!("cannot read {path}: no file system on the web")))
 }
 
-/// File › Import › Notes…: append the notes of another PSD or `.pcraft` file. Notes outside the
+/// File › Import › Notes…: append the notes of another PSD or `.oracle-edit` file. Notes outside the
 /// canvas are pulled inside, as Photoshop does when sizes differ.
 fn import(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "file.import.notes";
-    let path = p.get("path").and_then(Value::as_str).ok_or_else(|| bad(CMD, "pass `path` (.psd, .psb or .pcraft)"))?;
+    let path = p.get("path").and_then(Value::as_str).ok_or_else(|| bad(CMD, "pass `path` (.psd, .psb or .oracle-edit)"))?;
     let bytes = read(path)?;
     let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
     import_notes_from(s, &name, &bytes)
@@ -240,7 +240,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Notes…",
             menu: &["File", "Import"],
             shortcut: None,
-            params: r##"{"path":".psd|.psb|.pcraft with notes"}"##,
+            params: r##"{"path":".psd|.psb|.oracle-edit with notes"}"##,
             enabled: has_doc,
             run: import,
             journal: true,
@@ -315,7 +315,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let mut src = Document::new("src", oracle_edit_doc::Size::new(400, 400), oracle_edit_color::ColorMode::Rgb, oracle_edit_color::SampleType::U8);
         src.notes.push(Note { text: "from pcraft".into(), position: [300.0, 300.0], ..Default::default() });
-        let pc = dir.join("a.pcraft");
+        let pc = dir.join("a.oracle-edit");
         std::fs::write(&pc, oracle_edit_format::save_to_bytes(&src, &Default::default()).unwrap()).unwrap();
         let mut s = session();
         let r = s.execute("file.import.notes", json!({"path": pc.to_str().unwrap()})).unwrap();
@@ -333,7 +333,7 @@ mod tests {
             assert_eq!(s.active().unwrap().doc.notes.len(), 3);
         }
         // A file without notes is an error.
-        let empty = dir.join("b.pcraft");
+        let empty = dir.join("b.oracle-edit");
         src.notes.clear();
         std::fs::write(&empty, oracle_edit_format::save_to_bytes(&src, &Default::default()).unwrap()).unwrap();
         assert!(s.execute("file.import.notes", json!({"path": empty.to_str().unwrap()})).is_err());

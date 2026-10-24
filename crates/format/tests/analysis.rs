@@ -1,4 +1,4 @@
-//! Image › Analysis data and notes survive a `.pcraft` round trip; old manifests default them.
+//! Image › Analysis data and notes survive a `.oracle-edit` round trip; old manifests default them.
 
 use oracle_edit_color::{Color, ColorMode, SampleType};
 use oracle_edit_doc::{CountGroup, Document, MeasurementScale, Note, Ruler, Size};

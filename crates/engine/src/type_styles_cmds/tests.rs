@@ -137,7 +137,7 @@ fn styles_survive_typing_and_save() {
     s.execute("type.edit", json!({"layer": id, "replace": {"start": 2, "end": 2, "text": "cd"}})).unwrap();
     let t = layer(&s, id);
     assert_eq!(run_at(&t, 3).style_sheet, Some(cs));
-    // .pcraft round trip keeps the styles and references.
+    // .oracle-edit round trip keeps the styles and references.
     let doc = s.active().unwrap().doc.clone();
     let bytes = oracle_edit_format::save_to_bytes(&doc, &oracle_edit_format::SaveOptions::default()).unwrap();
     let back = oracle_edit_format::load_from_bytes(&bytes).unwrap();

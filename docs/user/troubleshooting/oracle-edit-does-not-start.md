@@ -17,7 +17,7 @@ On Windows, Oracle Edit starts Intel graphics on DirectX 12. If Oracle Edit clos
 ### Windows
 
 1. Use Oracle Edit 0.7.0 or later. Older builds do not have the steps below.
-2. Start Oracle Edit again. Double-clicking its icon or a `.pcraft` file works. Oracle Edit notes that the last start did not finish and uses the next safer graphics mode this time:
+2. Start Oracle Edit again. Double-clicking its icon or a `.oracle-edit` file works. Oracle Edit notes that the last start did not finish and uses the next safer graphics mode this time:
    - A start on Vulkan is followed by one on DirectX 12.
    - A start on DirectX 12 is followed by one on the CPU. The CPU mode does not depend on the graphics driver.
 3. If it started, nothing more to do. Oracle Edit remembers the mode that worked. You can see or reset it under **Edit › Preferences › Performance…** (on macOS, **Oracle Edit › Settings › Performance…**).

@@ -13,7 +13,7 @@ desktop UI       CLI       JSON control       MCP
                           |
        document model + operations + compositors
                           |
-             PSD / raster / .pcraft I/O
+             PSD / raster / .oracle-edit I/O
 ```
 
 The enforced dependency direction runs from format-independent foundation crates through the document and operation layers to composition, I/O, the engine, and finally UI/automation. `cargo xtask layers` checks this rule.
@@ -26,7 +26,7 @@ The complete design narrative and dependency diagram remain in [`docs/architectu
 - `oracle-edit-engine::Session` owns open documents, active state, history, and command dispatch.
 - `oracle-edit-compose` is the CPU reference compositor; `oracle-edit-gpu` accelerates supported interactive paths.
 - `oracle-edit-io` maps between documents and PSD or flat formats.
-- `oracle-edit-format` reads and writes the native `.pcraft` bundle.
+- `oracle-edit-format` reads and writes the native `.oracle-edit` bundle.
 - `oracle-edit-ui-egui` is a thin shell over engine commands.
 - `oracle-edit-automation` exposes the headless engine and the live-GUI bridge.
 

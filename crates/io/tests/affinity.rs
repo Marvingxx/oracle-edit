@@ -53,8 +53,8 @@ fn preview_is_named_and_warns_at_its_actual_size() {
     let out = export(&r.document, "copy.png", &ExportOptions::default()).unwrap();
     let img = oracle_edit_codecs::decode(&out.bytes).unwrap();
     assert_eq!(img.data(), &[220, 40, 60, 255, 0, 0, 0, 0]);
-    let native = export(&r.document, "copy.pcraft", &ExportOptions::default()).unwrap();
-    let back = import("copy.pcraft", &native.bytes).unwrap();
+    let native = export(&r.document, "copy.oracle-edit", &ExportOptions::default()).unwrap();
+    let back = import("copy.oracle-edit", &native.bytes).unwrap();
     assert_eq!(back.document.size, r.document.size);
     assert!(!back.source_read_only && !back.preview_only);
     for ext in oracle_edit_io::affinity::EXTENSIONS {
@@ -302,8 +302,8 @@ mod native {
             assert_eq!(px(30, 20), [255, 0, 0, 255]);
             assert_eq!(px(50, 40)[3], 0, "even-odd hole");
             // Saved as a native Oracle Edit document and opened again.
-            let saved = export(d, "copy.pcraft", &ExportOptions::default()).unwrap();
-            let back = import("copy.pcraft", &saved.bytes).unwrap();
+            let saved = export(d, "copy.oracle-edit", &ExportOptions::default()).unwrap();
+            let back = import("copy.oracle-edit", &saved.bytes).unwrap();
             assert_eq!(back.document.layers.len(), d.layers.len());
             assert!(export(d, "copy.psd", &ExportOptions::default()).is_ok());
             assert!(export(d, "copy.af", &ExportOptions::default()).is_err());

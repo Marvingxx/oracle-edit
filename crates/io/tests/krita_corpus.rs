@@ -63,9 +63,9 @@ fn run(ext: &str, tolerance: f32) {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let r = oracle_edit_io::import(&name, &bytes).unwrap_or_else(|e| panic!("{name}: {e}"));
         let (error, share, at) = max_error(&r.document, &merged(&bytes), tolerance);
-        // Saving as .pcraft keeps every imported layer exactly.
-        let native = oracle_edit_io::export(&r.document, "copy.pcraft", &Default::default()).unwrap();
-        assert_eq!(r.document.layers, oracle_edit_io::import("copy.pcraft", &native.bytes).unwrap().document.layers, "{name}");
+        // Saving as .oracle-edit keeps every imported layer exactly.
+        let native = oracle_edit_io::export(&r.document, "copy.oracle-edit", &Default::default()).unwrap();
+        assert_eq!(r.document.layers, oracle_edit_io::import("copy.oracle-edit", &native.bytes).unwrap().document.layers, "{name}");
         let known = KNOWN.iter().find(|(n, ..)| *n == name);
         eprintln!(
             "{name}: {} layers, max error {:.2}/255 {at}{}{}",

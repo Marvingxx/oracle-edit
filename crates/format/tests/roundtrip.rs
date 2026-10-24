@@ -1,4 +1,4 @@
-//! doc → .pcraft → doc equality, incremental saves, ids, previews.
+//! doc → .oracle-edit → doc equality, incremental saves, ids, previews.
 
 mod common;
 use common::*;
@@ -83,7 +83,7 @@ fn directory_bundle_roundtrip_all_modes() {
 fn save_path_zip_file() {
     let doc = rich_doc(ColorMode::Rgb, SampleType::U8);
     let dir = temp_dir("file");
-    let path = dir.join("a.pcraft");
+    let path = dir.join("a.oracle-edit");
     PcraftWriter::new().save_path(&doc, &path, &SaveOptions::default()).unwrap();
     assert!(path.is_file());
     assert_eq!(load_path(&path).unwrap(), doc);
@@ -95,7 +95,7 @@ fn save_path_zip_file() {
 fn load_bytes_source_matches_the_path_load() {
     let doc = rich_doc(ColorMode::Rgb, SampleType::U8);
     let dir = temp_dir("bytes-source");
-    let bundle = dir.join("a.pcraft");
+    let bundle = dir.join("a.oracle-edit");
     PcraftWriter::new().save_dir(&doc, &bundle, &SaveOptions::default()).unwrap();
     let loaded = load_bytes_source(&FsDir { root: bundle.clone() }, &LoadOptions::default()).unwrap();
     assert_eq!(loaded, doc);
@@ -333,7 +333,7 @@ fn directory_save_accepts_chosen_root_symlink_but_rejects_preview_symlink() {
     let doc = rich_doc(ColorMode::Rgb, SampleType::U8);
     let outside = temp_dir("symlink-preview-outside");
     let root_link_parent = temp_dir("symlink-root-parent");
-    let root_link = root_link_parent.join("linked.pcraft");
+    let root_link = root_link_parent.join("linked.oracle-edit");
     symlink(&outside, &root_link).unwrap();
     PcraftWriter::new().save_dir(&doc, &root_link, &SaveOptions::default()).unwrap();
     assert_eq!(load_path(&root_link).unwrap(), doc);
@@ -539,7 +539,7 @@ fn vector_fields_roundtrip_and_default_when_absent() {
     assert!(!shapes.is_empty() && shapes.iter().all(|s| *s == (1.0, 0.0)), "{shapes:?}");
 }
 
-/// Type kerning (#206): the auto mode and manual kerning survive .pcraft; manifests written
+/// Type kerning (#206): the auto mode and manual kerning survive .oracle-edit; manifests written
 /// before `kern` existed load with no manual kerning.
 #[test]
 fn text_kerning_roundtrips_and_defaults() {
@@ -578,7 +578,7 @@ fn text_kerning_roundtrips_and_defaults() {
     assert!(s.contains("\"kern\":0.0"), "kern defaults to 0");
 }
 
-/// Type on a path (#218): the path, start offset and flip survive .pcraft.
+/// Type on a path (#218): the path, start offset and flip survive .oracle-edit.
 #[test]
 fn path_text_shape_roundtrips() {
     use oracle_edit_doc::text::TextShape;
@@ -648,7 +648,7 @@ fn blend_if_roundtrips() {
 }
 
 /// Advanced Blending (knockout, as-group switches, transparency shapes, masks hide effects)
-/// survives .pcraft at every depth; manifests written before the field existed load with
+/// survives .oracle-edit at every depth; manifests written before the field existed load with
 /// Photoshop's defaults, and default layers don't write it.
 #[test]
 fn advanced_blending_roundtrips_and_defaults_when_absent() {

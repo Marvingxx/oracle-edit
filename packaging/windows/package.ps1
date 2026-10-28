@@ -85,11 +85,23 @@ foreach ($check in @(@('oracle-edit.exe', 2), @('oracle-edit-cli.exe', 3))) {
   Write-Output "ok $($check[0]): $Arch, PE subsystem $($h.Subsystem)"
 }
 $Stage = Join-Path $TargetDir "windows-package\$Arch"
-Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
+$StageRoot = [IO.Path]::GetFullPath((Join-Path $TargetDir 'windows-package')) + [IO.Path]::DirectorySeparatorChar
+$Stage = [IO.Path]::GetFullPath($Stage)
+if (-not $Stage.StartsWith($StageRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "unsafe staging path: $Stage" }
+Remove-Item -LiteralPath $Stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 Copy-Item (Join-Path $Bin 'oracle-edit.exe'), (Join-Path $Bin 'oracle-edit-cli.exe') $Stage
 
 & (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'oracle-edit.exe') (Join-Path $Stage 'oracle-edit-cli.exe')
+
+# A version string alone cannot detect a stale binary that still writes the former extension.
+# Exercise the staged CLI before producing distributable packages.
+$HostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
+  & (Join-Path $PSScriptRoot 'check-native-format.ps1') -Cli (Join-Path $Stage 'oracle-edit-cli.exe') -ExpectedVersion $Version
+} else {
+  Write-Output "skipping native-format smoke test: an $Arch build doesn't run on this $HostArch machine"
+}
 
 # ---- MSI ---------------------------------------------------------------------------------------
 # The setup wizard's art, drawn here from the app icon so the MSI shows Oracle Edit rather than
@@ -148,7 +160,9 @@ Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Ms
 
 # ---- portable zip ------------------------------------------------------------------------------
 $Portable = Join-Path $TargetDir "windows-package\oracle-edit-$Version-windows-$Arch-portable"
-Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
+$Portable = [IO.Path]::GetFullPath($Portable)
+if (-not $Portable.StartsWith($StageRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "unsafe portable path: $Portable" }
+Remove-Item -LiteralPath $Portable -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE', 'NOTICE', 'ATTRIBUTION.md') {
@@ -172,12 +186,4 @@ $Zip = Join-Path $Dist "oracle-edit-$Version-windows-$Arch-portable.zip"
 Remove-Item -Force $Zip -ErrorAction SilentlyContinue
 Compress-Archive -Path $Portable -DestinationPath $Zip
 
-# Smoke-test the CLI when this machine can run it. An ARM64 build made on an x64 runner can't run
-# here; .github/workflows/windows-arm64.yml installs and runs it on ARM64 instead.
-$HostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
-  Invoke-Native 'oracle-edit-cli --version' { & (Join-Path $Stage 'oracle-edit-cli.exe') --version }
-} else {
-  Write-Output "skipping oracle-edit-cli --version: an $Arch build doesn't run on this $HostArch machine"
-}
 Get-Item $Msi, $Zip | Format-Table Name, Length

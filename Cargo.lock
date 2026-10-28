@@ -4893,6 +4893,7 @@ dependencies = [
  "oracle-edit-text",
  "oracle-edit-vector",
  "oracle-library-ui",
+ "oracle-style",
  "oracle-suite-link",
  "rayon",
  "serde",
@@ -4962,6 +4963,7 @@ dependencies = [
 name = "oracle-library-ui"
 version = "0.1.0"
 dependencies = [
+ "craft-ui",
  "egui",
  "image",
  "log",
@@ -4970,6 +4972,13 @@ dependencies = [
  "resvg",
  "rfd",
  "winsafe",
+]
+
+[[package]]
+name = "oracle-style"
+version = "0.1.0"
+dependencies = [
+ "egui",
 ]
 
 [[package]]

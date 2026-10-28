@@ -55,10 +55,10 @@ choice!(TypeUnit { Points = "points", Pixels = "pixels", Millimeters = "mm" } de
 choice!(PointSize { PostScript = "postScript", Traditional = "traditional" } default PostScript);
 choice!(Interpolation { BicubicAutomatic = "bicubicAutomatic", Nearest = "nearestNeighbor", Bilinear = "bilinear", Bicubic = "bicubic", BicubicSmoother = "bicubicSmoother", BicubicSharper = "bicubicSharper", PreserveDetails = "preserveDetails" } default BicubicAutomatic);
 choice!(ColorPicker { Adobe = "adobe", System = "system" } default Adobe);
-choice!(Theme { Pro = "pro", ProMedium = "proMedium", ProLightGray = "proLightGray", ProLight = "proLight", Studio = "studio", StudioLight = "studioLight", Classic = "classic", SolarizedDark = "solarizedDark", Adwaita = "adwaita", AdwaitaDark = "adwaitaDark", BreezeLight = "breezeLight", BreezeDark = "breezeDark", SoftDark = "softDark", SoftLight = "softLight" } default ProMedium);
+choice!(Theme { Oracle = "oracle", OracleLight = "oracleLight", Pro = "pro", ProMedium = "proMedium", ProLightGray = "proLightGray", ProLight = "proLight", Studio = "studio", StudioLight = "studioLight", Classic = "classic", SolarizedDark = "solarizedDark", Adwaita = "adwaita", AdwaitaDark = "adwaitaDark", BreezeLight = "breezeLight", BreezeDark = "breezeDark", SoftDark = "softDark", SoftLight = "softLight" } default Oracle);
 choice!(AppearanceMode { Auto = "auto", Dark = "dark", Light = "light" } default Dark);
-choice!(DarkTheme { Pro = "pro", ProMedium = "proMedium", Studio = "studio", SolarizedDark = "solarizedDark", AdwaitaDark = "adwaitaDark", BreezeDark = "breezeDark", SoftDark = "softDark" } default ProMedium);
-choice!(LightTheme { ProLight = "proLight", ProLightGray = "proLightGray", StudioLight = "studioLight", Classic = "classic", Adwaita = "adwaita", BreezeLight = "breezeLight", SoftLight = "softLight" } default ProLight);
+choice!(DarkTheme { Oracle = "oracle", Pro = "pro", ProMedium = "proMedium", Studio = "studio", SolarizedDark = "solarizedDark", AdwaitaDark = "adwaitaDark", BreezeDark = "breezeDark", SoftDark = "softDark" } default Oracle);
+choice!(LightTheme { OracleLight = "oracleLight", ProLight = "proLight", ProLightGray = "proLightGray", StudioLight = "studioLight", Classic = "classic", Adwaita = "adwaita", BreezeLight = "breezeLight", SoftLight = "softLight" } default OracleLight);
 choice!(CanvasColor { Default = "default", Black = "black", DarkGray = "darkGray", MediumGray = "mediumGray", LightGray = "lightGray", Custom = "custom" } default Default);
 choice!(CanvasBorder { DropShadow = "dropShadow", Line = "line", None = "none" } default DropShadow);
 choice!(UiScale { Auto = "auto", P75 = "75", P80 = "80", P85 = "85", P90 = "90", P95 = "95", P100 = "100", P125 = "125", P150 = "150", P175 = "175", P200 = "200", P250 = "250", P300 = "300" } default Auto);
@@ -82,10 +82,30 @@ choice!(
     /// platforms ignore it.
     LinuxDisplayServer { Auto = "auto", X11 = "x11" } default Auto
 );
+/// Version of the saved preferences. 2: Oracle's own look (24/10/2026).
+pub const PREFS_VERSION: u64 = 2;
+
+/// Preferences saved before Oracle's own look (version 1) that still name the former defaults
+/// (Pro Medium, Pro Light, Lexend) take Oracle's: those were never a choice, only what came.
+/// Anything else that was chosen stays.
+fn migrate_to_oracle_look(v: &mut Value) {
+    if v.get("version").and_then(Value::as_u64).unwrap_or(0) >= PREFS_VERSION {
+        return;
+    }
+    let Some(interface) = v.get_mut("interface").and_then(Value::as_object_mut) else { return };
+    for (key, former, now) in
+        [("darkTheme", "proMedium", "oracle"), ("lightTheme", "proLight", "oracleLight"), ("theme", "proMedium", "oracle"), ("uiFont", "lexend", "spaceGrotesk")]
+    {
+        if interface.get(key).and_then(Value::as_str) == Some(former) {
+            interface.insert(key.into(), json!(now));
+        }
+    }
+}
+
 choice!(UiFontSize { Tiny = "tiny", Small = "small", Medium = "medium", Large = "large" } default Small);
 choice!(
-    /// Interface › UI Font: Lexend, Oracle's typeface, or Inter.
-    UiFont { Lexend = "lexend", Inter = "inter" } default Lexend
+    /// Interface › UI Font: Space Grotesk, Oracle's typeface, or Lexend or Inter.
+    UiFont { SpaceGrotesk = "spaceGrotesk", Lexend = "lexend", Inter = "inter" } default SpaceGrotesk
 );
 choice!(LogDestination { Metadata = "metadata", TextFile = "textFile", Both = "both" } default Metadata);
 choice!(LogDetail { SessionsOnly = "sessionsOnly", Concise = "concise", Detailed = "detailed" } default Concise);
@@ -305,10 +325,10 @@ pub struct Interface {
 impl Default for Interface {
     fn default() -> Self {
         Self {
-            theme: Theme::ProMedium,
+            theme: Theme::Oracle,
             appearance_mode: AppearanceMode::Dark,
-            dark_theme: DarkTheme::ProMedium,
-            light_theme: LightTheme::ProLight,
+            dark_theme: DarkTheme::Oracle,
+            light_theme: LightTheme::OracleLight,
             favorite_themes: Vec::new(),
             canvas_color: CanvasColor::Default,
             canvas_custom_color: "#282828".into(),
@@ -317,7 +337,7 @@ impl Default for Interface {
             canvas_border: CanvasBorder::DropShadow,
             ui_scale: UiScale::Auto,
             language: "auto".into(),
-            ui_font: UiFont::Lexend,
+            ui_font: UiFont::SpaceGrotesk,
             ui_font_size: UiFontSize::Small,
             show_channels_in_color: false,
             dynamic_color_sliders: true,
@@ -1778,6 +1798,7 @@ impl Session {
     }
 
     /// Everything persisted as one JSON document: the preferences plus `colorSettings`.
+    /// (`version`: [`PREFS_VERSION`].)
     pub fn prefs_to_json(&self) -> String {
         serde_json::to_string_pretty(&self.prefs_value()).unwrap_or_default()
     }
@@ -1787,7 +1808,7 @@ impl Session {
         let mut v = self.prefs().to_json();
         if let Value::Object(m) = &mut v {
             m.insert("colorSettings".into(), serde_json::to_value(&self.color.settings).unwrap_or(Value::Null));
-            m.insert("version".into(), json!(1));
+            m.insert("version".into(), json!(PREFS_VERSION));
             m.insert("presets".into(), self.presets.to_json(self));
         }
         v
@@ -1810,10 +1831,10 @@ impl Session {
             && let Some(theme) = interface.get("theme").and_then(Value::as_str).and_then(Theme::parse)
         {
             let (mode, slot) = match theme {
-                Theme::Pro | Theme::ProMedium | Theme::Studio | Theme::SolarizedDark | Theme::AdwaitaDark | Theme::BreezeDark | Theme::SoftDark => {
+                Theme::Oracle | Theme::Pro | Theme::ProMedium | Theme::Studio | Theme::SolarizedDark | Theme::AdwaitaDark | Theme::BreezeDark | Theme::SoftDark => {
                     ("dark", "darkTheme")
                 }
-                Theme::StudioLight | Theme::ProLightGray | Theme::ProLight | Theme::Classic | Theme::Adwaita | Theme::BreezeLight | Theme::SoftLight => {
+                Theme::OracleLight | Theme::StudioLight | Theme::ProLightGray | Theme::ProLight | Theme::Classic | Theme::Adwaita | Theme::BreezeLight | Theme::SoftLight => {
                     ("light", "lightTheme")
                 }
             };
@@ -1821,6 +1842,7 @@ impl Session {
             // A partially migrated file may already contain a newer theme selection (#5139).
             interface.entry(slot).or_insert_with(|| json!(theme.name()));
         }
+        migrate_to_oracle_look(&mut v);
         let color = v.as_object_mut().and_then(|m| m.remove("colorSettings"));
         let presets = v.as_object_mut().and_then(|m| m.remove("presets"));
         let mut invalid = Vec::new();
@@ -1897,6 +1919,14 @@ impl Session {
         // select a visible theme.
         if path == "interface.theme" || next.interface.theme != self.prefs().interface.theme {
             match next.interface.theme {
+                Theme::Oracle => {
+                    next.interface.dark_theme = DarkTheme::Oracle;
+                    next.interface.appearance_mode = AppearanceMode::Dark;
+                }
+                Theme::OracleLight => {
+                    next.interface.light_theme = LightTheme::OracleLight;
+                    next.interface.appearance_mode = AppearanceMode::Light;
+                }
                 Theme::Pro => {
                     next.interface.dark_theme = DarkTheme::Pro;
                     next.interface.appearance_mode = AppearanceMode::Dark;

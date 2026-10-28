@@ -1,7 +1,7 @@
 //! Application-owned panel IDs and commands around the shared docking layout.
 
 use crate::dock::Group;
-use craft_ui::docking::{Action, Floating, Layout, Node, Placement, Zone};
+use craft_ui::docking::{Action, Layout, Node, Placement, Zone};
 use craft_ui::layout::{SplitAxis, SplitSize};
 use serde_json::{Value, json};
 
@@ -13,6 +13,7 @@ const PANELS: &[(&str, &str, Group)] = &[
     ("gradients", "Gradients", Group::Color),
     ("patterns", "Patterns", Group::Color),
     ("properties", "Properties", Group::Properties),
+    ("oracleLibrary", "Oracle Library", Group::Properties),
     ("adjustments", "Adjustments", Group::Properties),
     ("character", "Character", Group::Character),
     ("paragraph", "Paragraph", Group::Character),
@@ -84,10 +85,6 @@ fn legacy_layout(app: &OracleEditApp, all: bool) -> Layout<String> {
             Group::Brushes => app.ui.dock_tabs.brushes,
         };
         let active = labels.get(selected).and_then(|label| normalize(label)).and_then(|id| panels.iter().position(|p| p == id)).unwrap_or(0);
-        if group == Group::Properties && !pro {
-            layout.floating.push(Floating { panels, active, rect: [120.0, 160.0, 320.0, 440.0] });
-            continue;
-        }
         let node = Node::Tabs { panels, active };
         layout.root = Some(match layout.root.take() {
             Some(second) => Node::Split {
@@ -132,7 +129,12 @@ fn first_root(layout: &Layout<String>, except: &str) -> Option<String> {
 }
 
 fn ensure(layout: &mut Layout<String>, panel: &str) -> Result<(), String> {
-    let anchor = first_root(layout, panel);
+    let root = Layout { root: layout.root.clone(), floating: Vec::new() };
+    let anchor = if panel == "oracleLibrary" && root.contains(&"properties".to_string()) {
+        Some("properties".to_string())
+    } else {
+        first_root(layout, panel)
+    };
     layout.apply(Action::Open { panel: panel.into(), anchor }).map_err(|e| e.to_string())
 }
 
@@ -271,6 +273,12 @@ fn apply_action(app: &mut OracleEditApp, action: Action<String>) -> Result<Value
         reveal_group(app, &panel);
     }
     Ok(json!({"layout": app.ui.docking}))
+}
+
+/// Window > Oracle Library reveals the dock tab, preserving an explicitly detached tab.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn open_library(app: &mut OracleEditApp) -> Result<Value, String> {
+    change(app, "activate", &json!({"panel": "oracleLibrary"}))
 }
 
 fn change(app: &mut OracleEditApp, operation: &str, params: &Value) -> Result<Value, String> {
@@ -415,6 +423,9 @@ pub(crate) fn show(app: &mut OracleEditApp, ui: &mut egui::Ui) -> bool {
         style.inactive_text = t.text_dim;
         style.border = egui::Stroke::new(1.0, t.card_border);
         style.accent = t.accent;
+        if t.is_oracle() {
+            style.font = oracle_style::fonts::label(10.0);
+        }
         style.float_label = tl!("Float Panel").to_string();
         style.close_label = tl!("Close Panel").to_string();
         style.move_label = tl!("Group with").to_string();
@@ -429,7 +440,11 @@ pub(crate) fn show(app: &mut OracleEditApp, ui: &mut egui::Ui) -> bool {
             ui,
             &layout,
             &style,
-            |id| PANELS.iter().find(|p| p.0 == id).map(|p| tl!(p.1).to_string()).unwrap_or_else(|| id.clone()),
+            // Oracle's look sets panel names in capitals (the label face is mono).
+            |id| {
+                let name = PANELS.iter().find(|p| p.0 == id).map(|p| tl!(p.1).to_string()).unwrap_or_else(|| id.clone());
+                if t.is_oracle() { name.to_uppercase() } else { name }
+            },
             |_| craft_ui::docking::Permissions { movable: !locked, floatable: !locked, closable: !locked, accepts_tabs: !locked },
             |id| {
                 if collapsed.contains(id) {
@@ -540,6 +555,11 @@ pub(crate) fn legacy_tab(app: &mut OracleEditApp, ui: &mut egui::Ui, panel: &str
 }
 
 fn body(app: &mut OracleEditApp, ui: &mut egui::Ui, id: &str) {
+    #[cfg(not(target_arch = "wasm32"))]
+    if id == "oracleLibrary" {
+        app.oracle_library.panel_ui(ui, crate::i18n::current().code() == "fr");
+        return;
+    }
     let Some((_, label, group)) = PANELS.iter().find(|p| p.0 == id) else { return };
     let pro = crate::theme::Tokens::get(ui.ctx()).pro;
     let Some(tab) = group.tabs(pro).iter().position(|name| name == label) else { return };

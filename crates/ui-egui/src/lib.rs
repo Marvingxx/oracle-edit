@@ -2199,7 +2199,10 @@ impl eframe::App for OracleEditApp {
         #[cfg(not(target_arch = "wasm32"))]
         crate::brand_swatches::poll(self, ctx);
         #[cfg(not(target_arch = "wasm32"))]
-        self.oracle_library.ui(ctx, i18n::current().code() == "fr");
+        if self.oracle_library.update_docked(ctx) {
+            let _ = crate::panel_docking::open_library(self);
+            ctx.request_repaint();
+        }
         // The control transport wakes the UI on arrival (ctx.request_repaint); only poll while a
         // screenshot is pending. (Polling every 50 ms here made idle apps render at 20 fps.)
         if !self.pending_screenshots.is_empty() {

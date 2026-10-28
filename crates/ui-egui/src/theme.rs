@@ -25,10 +25,15 @@ use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeKind {
+    /// Oracle's own look (oracle-style): void black, ink panels, paper text and brand-red
+    /// active elements; sharp corners, a HUD grid around the canvas (default).
+    #[default]
+    Oracle,
+    /// Oracle's look on paper.
+    OracleLight,
     /// Photoshop-style Spectrum dark: flat charcoal panels, tab strips, Oracle red accents (darkest brightness).
     Pro,
-    /// Photoshop's default (second) interface brightness: #535353 panels, #282828 canvas (default).
-    #[default]
+    /// Photoshop's default (second) interface brightness: #535353 panels, #282828 canvas.
     ProMedium,
     /// Photoshop's third interface brightness: #B8B8B8 panels (#2661).
     ProLightGray,
@@ -55,7 +60,9 @@ pub enum ThemeKind {
 }
 
 impl ThemeKind {
-    pub const ALL: [ThemeKind; 14] = [
+    pub const ALL: [ThemeKind; 16] = [
+        ThemeKind::Oracle,
+        ThemeKind::OracleLight,
         ThemeKind::Pro,
         ThemeKind::ProMedium,
         ThemeKind::ProLightGray,
@@ -73,6 +80,8 @@ impl ThemeKind {
     ];
     pub fn label(self) -> &'static str {
         match self {
+            ThemeKind::Oracle => "Oracle",
+            ThemeKind::OracleLight => "Oracle (Light)",
             ThemeKind::Pro => "Pro (Dark)",
             ThemeKind::ProMedium => "Pro (Medium Gray)",
             ThemeKind::ProLightGray => "Pro (Light Gray)",
@@ -93,6 +102,8 @@ impl ThemeKind {
     /// `window.theme.<id>`.
     pub fn id(self) -> &'static str {
         match self {
+            ThemeKind::Oracle => "oracle",
+            ThemeKind::OracleLight => "oracleLight",
             ThemeKind::Pro => "pro",
             ThemeKind::ProMedium => "proMedium",
             ThemeKind::ProLightGray => "proLightGray",
@@ -111,7 +122,7 @@ impl ThemeKind {
     }
     /// Photoshop-grammar layout (tab strips, flat panels): the four Pro brightness levels.
     pub fn is_pro(self) -> bool {
-        matches!(self, ThemeKind::Pro | ThemeKind::ProMedium | ThemeKind::ProLightGray | ThemeKind::ProLight)
+        matches!(self, ThemeKind::Oracle | ThemeKind::OracleLight | ThemeKind::Pro | ThemeKind::ProMedium | ThemeKind::ProLightGray | ThemeKind::ProLight)
     }
     pub fn next(self) -> Self {
         let i = Self::ALL.iter().position(|k| *k == self).unwrap_or(0);
@@ -119,10 +130,12 @@ impl ThemeKind {
     }
     pub fn from_name(s: &str) -> Option<Self> {
         match s.to_ascii_lowercase().replace([' ', '_', '-', '(', ')'], "").as_str() {
-            "pro" | "prodark" | "photoshop" | "dark" => Some(ThemeKind::Pro),
+            "oracle" | "oracledark" | "dark" => Some(ThemeKind::Oracle),
+            "oraclelight" | "light" => Some(ThemeKind::OracleLight),
+            "pro" | "prodark" | "photoshop" => Some(ThemeKind::Pro),
             "promedium" | "promediumgray" | "medium" | "mediumgray" => Some(ThemeKind::ProMedium),
             "prolightgray" | "lightgray" | "mediumlight" => Some(ThemeKind::ProLightGray),
-            "prolight" | "prolightest" | "lightest" | "light" => Some(ThemeKind::ProLight),
+            "prolight" | "prolightest" | "lightest" => Some(ThemeKind::ProLight),
             "studio" | "studiodark" => Some(ThemeKind::Studio),
             "studiolight" => Some(ThemeKind::StudioLight),
             "classic" | "win2000" | "retro" => Some(ThemeKind::Classic),
@@ -204,6 +217,7 @@ impl Tokens {
 
     pub fn for_kind(kind: ThemeKind) -> Self {
         match kind {
+            ThemeKind::Oracle | ThemeKind::OracleLight => Tokens::oracle(kind),
             // Sampled from Photoshop 2026's default brightness (raw display values).
             ThemeKind::ProMedium => Tokens {
                 kind,
@@ -805,7 +819,7 @@ impl Tokens {
     /// [`crate::widgets::text_field`], because `Visuals::selection` also fills selected list rows
     /// and slider trails, which must keep the theme's.
     pub fn field_selection(&self) -> Color32 {
-        if self.pro { Color32::from_gray(if self.dark() { 96 } else { 201 }) } else { self.accent_soft }
+        if self.pro && !self.is_oracle() { Color32::from_gray(if self.dark() { 96 } else { 201 }) } else { self.accent_soft }
     }
 
     /// The 1 px ring round a slider knob, if the theme draws one: the Pro layouts' dark ring, and
@@ -821,10 +835,66 @@ impl Tokens {
         }
     }
 
+    /// Oracle's own look (either brightness).
+    pub fn is_oracle(&self) -> bool {
+        matches!(self.kind, ThemeKind::Oracle | ThemeKind::OracleLight)
+    }
+
+    /// The app accent marks the open tab, current tool and keyboard focus.
+    pub fn active(&self) -> Color32 {
+        if self.is_oracle() { oracle_style::Palette::for_dark(self.dark()).active } else { self.accent }
+    }
+
+    /// Oracle's look, from oracle-style's palette.
+    fn oracle(kind: ThemeKind) -> Tokens {
+        let p = oracle_style::Palette::for_dark(kind == ThemeKind::Oracle);
+        Tokens {
+            kind,
+            chrome: p.void,
+            canvas: p.void,
+            canvas_dot: p.grid,
+            dock: p.void,
+            card: p.ink,
+            card_border: p.line,
+            field: if p.dark { p.void } else { p.steel },
+            field_border: p.line_strong,
+            hover: p.steel,
+            pressed: p.steel_hi,
+            text: p.text,
+            text_dim: p.text_dim,
+            text_faint: p.text_faint,
+            icon: p.text,
+            accent: p.accent,
+            accent_soft: p.accent_soft,
+            accent_border: p.accent,
+            accent_text: p.accent,
+            separator: p.line,
+            shadow: Color32::from_black_alpha(if p.dark { 180 } else { 60 }),
+            primary_bg: p.accent,
+            primary_text: p.on_accent,
+            danger: p.accent,
+            warning: if p.dark { oracle_style::palette::ACID } else { oracle_style::palette::ACID_ON_PAPER },
+            radius_sm: 0.0,
+            radius: 0.0,
+            radius_lg: 2.0,
+            bevel: false,
+            pro: true,
+            round_chips: false,
+            tab_strip: p.void,
+            row_selected: p.accent_soft,
+            histogram_bg: p.void,
+            histogram_level: if p.dark { 225 } else { 200 },
+            caption_close: p.accent,
+            caption_close_text: p.on_accent,
+            scrim: Color32::from_black_alpha(if p.dark { 150 } else { 90 }),
+        }
+    }
+
     pub fn dark(&self) -> bool {
         matches!(
             self.kind,
-            ThemeKind::Studio
+            ThemeKind::Oracle
+                | ThemeKind::Studio
                 | ThemeKind::Pro
                 | ThemeKind::ProMedium
                 | ThemeKind::SolarizedDark
@@ -875,6 +945,19 @@ pub fn install_fonts_with(ctx: &egui::Context, cjk: crate::cjk_fonts::Sources) {
     if let Some(mono) = mono {
         fonts.families.entry(FontFamily::Monospace).or_default().insert(0, mono);
     }
+    // Space Grotesk, Oracle's typeface, in front of the stack (Inter behind it), with JetBrains
+    // Mono Bold for labels (oracle-style).
+    let grotesk = ui_face(ctx) == UiFont::SpaceGrotesk;
+    let mut oracle_faces = [None, None];
+    oracle_style::fonts::add_named(&mut fonts);
+    if grotesk {
+        oracle_style::fonts::add(&mut fonts);
+        oracle_faces = [Some(oracle_style::fonts::SANS_MEDIUM_NAME.to_string()), Some(oracle_style::fonts::SANS_BOLD_NAME.to_string())];
+    }
+    let [lexend_medium, lexend_semibold] = match oracle_faces {
+        [Some(m), Some(b)] => [Some(m), Some(b)],
+        _ => [lexend_medium, lexend_semibold],
+    };
     // Named weights fall back to the default stack for missing glyphs.
     let fallback: Vec<String> = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
     for (fam, lexend, primary) in [("medium", lexend_medium, medium), ("semibold", lexend_semibold, semibold)] {
@@ -928,6 +1011,7 @@ fn ui_face_id() -> egui::Id {
 }
 
 /// The UI face [`install_fonts`] registers: the one last set with [`set_ui_face`], Inter before.
+/// (Space Grotesk is Oracle's: see oracle-style.)
 fn ui_face(ctx: &egui::Context) -> UiFont {
     ctx.data(|d| d.get_temp::<UiFont>(ui_face_id())).unwrap_or(UiFont::Inter)
 }
@@ -1056,7 +1140,7 @@ pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
     v.window_shadow = egui::Shadow { offset: [0, 10], blur: 32, spread: 0, color: t.shadow };
     v.popup_shadow = egui::Shadow { offset: [0, 6], blur: 20, spread: 0, color: t.shadow };
     v.selection.bg_fill = if t.bevel || t.pro { t.accent } else { t.accent_soft };
-    v.selection.stroke = Stroke::new(1.0, t.accent_text);
+    v.selection.stroke = Stroke::new(1.0, if t.is_oracle() { t.primary_text } else { t.accent_text });
     v.slider_trailing_fill = true;
     v.handle_shape = egui::style::HandleShape::Circle;
     v.striped = false;

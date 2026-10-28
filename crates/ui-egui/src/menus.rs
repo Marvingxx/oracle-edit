@@ -306,7 +306,7 @@ pub(crate) fn invoke_unguarded(app: &mut OracleEditApp, ctx: &egui::Context, id:
         }
         "window.oracleLibrary" => {
             #[cfg(not(target_arch = "wasm32"))]
-            app.oracle_library.toggle();
+            crate::panel_docking::open_library(app)?;
             Ok(Value::Null)
         }
         "file.addToLibrary" => {
@@ -317,7 +317,7 @@ pub(crate) fn invoke_unguarded(app: &mut OracleEditApp, ctx: &egui::Context, id:
         #[cfg(not(target_arch = "wasm32"))]
         "file.sendToVector" => crate::send_to::send_active(app, oracle_suite_link::App::Vector),
         #[cfg(not(target_arch = "wasm32"))]
-        "file.sendToGuide" => crate::send_to::send_active(app, oracle_suite_link::App::Guide),
+        "file.sendToGuide" => crate::send_to::send_active(app, oracle_suite_link::App::Layout),
         #[cfg(not(target_arch = "wasm32"))]
         "file.sendToMotion" => crate::send_to::send_active(app, oracle_suite_link::App::Motion),
         "view.darkenInterface" | "view.lightenInterface" => {
@@ -329,7 +329,9 @@ pub(crate) fn invoke_unguarded(app: &mut OracleEditApp, ctx: &egui::Context, id:
             crate::prefs_ui::sync_appearance(app, ctx);
             Ok(Value::Null)
         }
-        "window.theme.pro"
+        "window.theme.oracle"
+        | "window.theme.oracleLight"
+        | "window.theme.pro"
         | "window.theme.proMedium"
         | "window.theme.proLightGray"
         | "window.theme.proLight"
@@ -798,6 +800,9 @@ const MODE_CHECKS: [&str; 11] = ["rgb", "grayscale", "cmyk", "lab", "multichanne
 
 /// Is a UI-level panel toggle currently on (for checkmarks)?
 fn checked(app: &OracleEditApp, id: &str) -> Option<bool> {
+    if id == "window.oracleLibrary" {
+        return Some(app.ui.docking.as_ref().is_some_and(|layout| layout.contains(&"oracleLibrary".to_string())));
+    }
     if let Some(checked) = crate::panel_docking::checked(app, id) {
         return Some(checked);
     }

@@ -94,6 +94,7 @@ fn selected_theme(interface: &prefs::Interface, system: Option<egui::Theme>) -> 
     };
     if light {
         match interface.light_theme {
+            LightTheme::OracleLight => ThemeKind::OracleLight,
             LightTheme::StudioLight => ThemeKind::StudioLight,
             LightTheme::ProLightGray => ThemeKind::ProLightGray,
             LightTheme::ProLight => ThemeKind::ProLight,
@@ -104,6 +105,7 @@ fn selected_theme(interface: &prefs::Interface, system: Option<egui::Theme>) -> 
         }
     } else {
         match interface.dark_theme {
+            DarkTheme::Oracle => ThemeKind::Oracle,
             DarkTheme::Pro => ThemeKind::Pro,
             DarkTheme::ProMedium => ThemeKind::ProMedium,
             DarkTheme::Studio => ThemeKind::Studio,
@@ -152,6 +154,7 @@ pub(crate) fn step_brightness(app: &mut OracleEditApp, ctx: &egui::Context, ligh
 }
 
 const LIGHT_THEME_OPTIONS: &[(&str, ThemeKind)] = &[
+    ("oracleLight", ThemeKind::OracleLight),
     ("proLight", ThemeKind::ProLight),
     ("proLightGray", ThemeKind::ProLightGray),
     ("studioLight", ThemeKind::StudioLight),
@@ -161,6 +164,7 @@ const LIGHT_THEME_OPTIONS: &[(&str, ThemeKind)] = &[
     ("softLight", ThemeKind::SoftLight),
 ];
 const DARK_THEME_OPTIONS: &[(&str, ThemeKind)] = &[
+    ("oracle", ThemeKind::Oracle),
     ("proMedium", ThemeKind::ProMedium),
     ("pro", ThemeKind::Pro),
     ("studio", ThemeKind::Studio),

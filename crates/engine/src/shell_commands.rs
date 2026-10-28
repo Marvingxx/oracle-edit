@@ -61,7 +61,7 @@ pub const SHELL_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("window.oracleLibrary", "Oracle Library", &["Window"], None),
     ("file.addToLibrary", "Add to Oracle Library", &["File"], None),
     ("file.sendToVector", "Send to Oracle Vector", &["File"], None),
-    ("file.sendToGuide", "Send to Oracle Brand Guide", &["File"], None),
+    ("file.sendToGuide", "Send to Oracle Layout", &["File"], None),
     ("file.sendToMotion", "Send to Oracle Motion", &["File"], None),
     ("window.toggle.toolbar", "Tools", &["Window"], None),
     // Photoshop's Tab and ⇧Tab: all panels (Tools, options bar and the dock), or only the dock.
@@ -72,6 +72,8 @@ pub const SHELL_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("window.nextDocument", "Next Document", &[], Some("Ctrl+Tab")),
     ("window.previousDocument", "Previous Document", &[], Some("Ctrl+Shift+Tab")),
     ("window.theme.toggle", "Next Appearance Mode", &["Window"], None),
+    ("window.theme.oracle", "Oracle Theme", &["Window", "Theme"], None),
+    ("window.theme.oracleLight", "Oracle Light Theme", &["Window", "Theme"], None),
     ("window.theme.pro", "Pro Theme", &["Window", "Theme"], None),
     ("window.theme.proMedium", "Pro Medium Gray Theme", &["Window", "Theme"], None),
     ("window.theme.proLightGray", "Pro Light Gray Theme", &["Window", "Theme"], None),

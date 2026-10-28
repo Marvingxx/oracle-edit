@@ -80,7 +80,12 @@ fn section(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
         11.0,
         t.text_dim,
     );
-    ui.painter().text(pos2(r.left() + 18.0, r.center().y), Align2::LEFT_CENTER, title, crate::theme::semibold(12.0), t.text);
+    if t.is_oracle() {
+        let g = ui.painter().layout_job(oracle_style::hud::label_job(title, 10.0, t.text_dim));
+        ui.painter().galley(pos2(r.left() + 18.0, r.center().y - g.size().y / 2.0), g, t.text_dim);
+    } else {
+        ui.painter().text(pos2(r.left() + 18.0, r.center().y), Align2::LEFT_CENTER, title, crate::theme::semibold(12.0), t.text);
+    }
     if resp.clicked() {
         open = !open;
         ui.data_mut(|d| d.insert_temp(key, open));

@@ -768,3 +768,53 @@ fn native_tab_reorder_stays_native_until_drag_crosses_the_strip() {
     let channels = tabs.iter().position(|(_, label)| *label == "Channels").unwrap();
     assert!(channels < layers, "upstream native reorder remains effective");
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn oracle_library_menu_opens_a_docked_tab_and_drag_detaches_and_redocks_it() {
+    let mut app = app();
+    crate::menus::invoke(&mut app, &egui::Context::default(), "window.oracleLibrary", json!({})).unwrap();
+    let panel = "oracleLibrary".to_string();
+    let layout = app.ui.docking.as_ref().unwrap();
+    assert!(layout.contains(&panel));
+    assert!(layout.floating.iter().all(|g| !g.panels.contains(&panel)));
+    assert!(!app.oracle_library.open, "the menu must not open the legacy window");
+    let before = layout.panels().len();
+    crate::menus::invoke(&mut app, &egui::Context::default(), "window.oracleLibrary", json!({})).unwrap();
+    assert_eq!(app.ui.docking.as_ref().unwrap().panels().len(), before);
+    app.run("window.panel.close", json!({"panel":panel})).unwrap();
+    crate::menus::invoke(&mut app, &egui::Context::default(), "window.oracleLibrary", json!({})).unwrap();
+    assert!(app.ui.docking.as_ref().unwrap().floating.iter().all(|g| !g.panels.contains(&panel)));
+    let mut h = harness(app, vec2(1280.0, 800.0));
+    let id = egui::Id::new("oracle-edit-panel-docking");
+    let source = h.ctx.read_response(id.with(("tab", &panel))).expect("library tab must be visible").rect.center();
+    assert!(source.x > 640.0, "library belongs on the right: {source:?}");
+    drag(&mut h, source, egui::pos2(160.0, 140.0));
+    assert!(h.state().ui.docking.as_ref().unwrap().floating.iter().any(|g| g.panels.contains(&panel)));
+    let source = h.ctx.read_response(id.with(("tab", &panel))).unwrap().rect.center();
+    let destination = h.ctx.read_response(id.with(("tab", &"properties".to_string()))).expect("Properties remains available").rect.center();
+    drag(&mut h, source, destination);
+    let layout = h.state().ui.docking.as_ref().unwrap();
+    assert!(layout.floating.iter().all(|g| !g.panels.contains(&panel)));
+    assert!(valid(layout));
+}
+
+#[test]
+fn oracle_library_opens_beside_properties_in_every_theme() {
+    fn shares_tabs(node: &craft_ui::docking::Node<String>) -> bool {
+        use craft_ui::docking::Node;
+        match node {
+            Node::Tabs { panels, .. } => panels.iter().any(|p| p == "properties") && panels.iter().any(|p| p == "oracleLibrary"),
+            Node::Split { first, second, .. } => shares_tabs(first) || shares_tabs(second),
+            _ => false,
+        }
+    }
+    for theme in crate::theme::ThemeKind::ALL {
+        let mut app = app();
+        app.ui.theme = theme;
+        crate::menus::invoke(&mut app, &egui::Context::default(), "window.oracleLibrary", json!({})).unwrap();
+        let layout = app.ui.docking.as_ref().unwrap();
+        assert!(layout.floating.is_empty(), "unexpected initial floating panel in {theme:?}");
+        assert!(shares_tabs(layout.root.as_ref().unwrap()), "library must share the Properties tabs in {theme:?}");
+    }
+}

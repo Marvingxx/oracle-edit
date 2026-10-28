@@ -94,9 +94,8 @@
             <Verb Id="open" Command="Open" TargetFile="OracleEditExe" Argument="&quot;%1&quot;" />
           </Extension>
           <!-- .pcraft: the same format under its name from before the Oracle rename. -->
-          <Extension Id="pcraft" ContentType="application/x-oracle-edit">
-            <Verb Id="open" Command="Open" TargetFile="OracleEditExe" Argument="&quot;%1&quot;" />
-          </Extension>
+          <!-- Both extensions share the ProgId's open command; declaring it twice duplicates registry rows. -->
+          <Extension Id="pcraft" ContentType="application/x-oracle-edit" />
         </ProgId>
         <!-- PSD/PSB and images: offered under "Open with", never forced as the default. -->
         <ProgId Id="OracleEdit.PhotoshopDocument" Description="PSD Document" Icon="OracleEditExe" IconIndex="0" />

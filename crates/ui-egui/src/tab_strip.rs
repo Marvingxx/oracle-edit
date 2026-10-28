@@ -98,8 +98,9 @@ fn tabs_in(
     mut paint_tab: impl FnMut(&Ui, Rect, usize, &str, std::sync::Arc<egui::Galley>, &Response, bool),
 ) -> StripOut {
     let t = Tokens::get(ui.ctx());
-    // Panel names are English keys; draw them in the UI language.
-    let names: Vec<&str> = panel_ids.iter().map(|n| tl!(n)).collect();
+    // Panel names are English keys; draw them in the UI language (in capitals in Oracle's look).
+    let upper: Vec<String> = if t.is_oracle() { panel_ids.iter().map(|n| tl!(n).to_uppercase()).collect() } else { Vec::new() };
+    let names: Vec<&str> = if t.is_oracle() { upper.iter().map(String::as_str).collect() } else { panel_ids.iter().map(|n| tl!(n)).collect() };
     let translated_tabs = names.as_slice();
     let natural: Vec<f32> = translated_tabs.iter().map(|n| ui.painter().layout_no_wrap((*n).to_owned(), font.clone(), t.text).size().x + pad).collect();
     let f = fit(&natural, *selected, area.width(), min_w, CHEVRON_W);
@@ -216,7 +217,7 @@ pub fn pro_tabs(ui: &mut Ui, id: egui::Id, strip: Rect, menu_left: f32, tabs: &[
         area,
         tabs,
         selected,
-        egui::FontId::proportional(11.5),
+        if t.is_oracle() { oracle_style::fonts::label(10.0) } else { egui::FontId::proportional(11.5) },
         22.0,
         40.0,
         reorderable,
@@ -224,6 +225,9 @@ pub fn pro_tabs(ui: &mut Ui, id: egui::Id, strip: Rect, menu_left: f32, tabs: &[
         |ui, r, i, _, galley, resp, active| {
             if active {
                 ui.painter().rect_filled(r, CornerRadius { nw: if i == 0 { 3 } else { 0 }, ne: 0, sw: 0, se: 0 }, t.card);
+                if t.is_oracle() {
+                    oracle_style::hud::active_bar(ui.painter(), r, t.active());
+                }
             } else if resp.hovered() {
                 ui.painter().rect_filled(r, 0.0, t.hover.gamma_multiply(0.4));
             }

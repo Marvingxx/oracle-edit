@@ -2671,6 +2671,9 @@ fn pro_tabs(app: &mut OracleEditApp, ui: &mut egui::Ui) -> TabStrip {
         let sel = Some(i) == active;
         if sel {
             ui.painter().rect_filled(r, 0.0, t.chrome);
+            if t.is_oracle() {
+                oracle_style::hud::active_bar(ui.painter(), r, t.active());
+            }
         } else if resp.hovered() {
             ui.painter().rect_filled(r, 0.0, t.hover.gamma_multiply(0.35));
         }
@@ -2846,6 +2849,11 @@ fn paint_dots(ui: &egui::Ui, rect: Rect, enabled: bool) {
         return;
     }
     let t = crate::theme::Tokens::get(ui.ctx());
+    // Oracle's look: a fine HUD grid rather than dots.
+    if t.is_oracle() {
+        oracle_style::hud::grid(&ui.painter_at(rect), rect, 24.0, t.canvas_dot);
+        return;
+    }
     if let Some(id) = dots(ui.ctx(), &t) {
         let uv = Rect::from_min_max(Pos2::ZERO, pos2(rect.width() / 22.0, rect.height() / 22.0));
         ui.painter_at(rect).image(id, rect, uv, Color32::WHITE);
@@ -4069,6 +4077,12 @@ pub fn canvas_view(app: &mut OracleEditApp, ui: &mut egui::Ui, idx: usize, rect:
         // nor while the Crop tool hides everything outside its box (Show Cropped Area off).
         if border == oracle_edit_engine::prefs::CanvasBorder::Line && !beyond && !crate::crop_shield::hides_outside(app) {
             painter.rect_stroke(img_rect, 0.0, Stroke::new(1.0, Color32::from_gray(20)), egui::StrokeKind::Outside);
+        }
+        // Oracle's look: HUD corner marks around the document.
+        let tokens = crate::theme::Tokens::get(painter.ctx());
+        if tokens.is_oracle() && !beyond && !crate::crop_shield::hides_outside(app) {
+            let frame = img_rect.expand(7.0);
+            oracle_style::hud::corners(&painter, frame, oracle_style::hud::corner_len(frame.size()), Stroke::new(1.5, tokens.active().gamma_multiply(0.7)));
         }
         crate::type_tool::draw_overlay(app, &painter, &xf);
         crate::transform_tool::draw_overlay(app, &painter, &xf);
